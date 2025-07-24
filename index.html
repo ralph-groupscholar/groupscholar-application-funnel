@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Group Scholar Application Funnel</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Group Scholar • Application Funnel</p>
+        <h1>Application momentum, reviewer capacity, and conversion health.</h1>
+        <p class="subhead">Track cohorts, isolate drop-offs, and surface bottlenecks before they stall scholar outcomes.</p>
+      </div>
+      <div class="hero-card">
+        <div class="hero-metric">
+          <span class="label">Active Cohort</span>
+          <strong id="activeCohort">Spring 2026</strong>
+        </div>
+        <div class="hero-metric">
+          <span class="label">Applications</span>
+          <strong id="totalApplications">--</strong>
+        </div>
+        <div class="hero-metric">
+          <span class="label">Overall Conversion</span>
+          <strong id="overallConversion">--</strong>
+        </div>
+      </div>
+    </header>
+
+    <section class="controls">
+      <div class="control">
+        <label for="cohortSelect">Cohort</label>
+        <select id="cohortSelect"></select>
+      </div>
+      <div class="control">
+        <label for="statusFilter">Status</label>
+        <select id="statusFilter">
+          <option value="all">All</option>
+          <option value="active">Active</option>
+          <option value="stalled">Stalled</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+      <div class="control">
+        <label for="reviewerFilter">Reviewer</label>
+        <select id="reviewerFilter"></select>
+      </div>
+      <div class="control">
+        <label for="searchInput">Search</label>
+        <input id="searchInput" type="text" placeholder="Name or ID" />
+      </div>
+      <div class="control actions">
+        <button id="exportJson">Export JSON</button>
+        <button id="generateBrief">Generate Brief</button>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel funnel">
+        <div class="panel-header">
+          <h2>Funnel Health</h2>
+          <p>Stage-by-stage conversion and drop-offs.</p>
+        </div>
+        <div id="funnelStages" class="funnel-stages"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Reviewer Capacity</h2>
+          <p>Assignment load and turnaround time.</p>
+        </div>
+        <div id="reviewerTable" class="table"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Operational Alerts</h2>
+          <p>Automatic flags for stalled cohorts and backlog.</p>
+        </div>
+        <div id="alertList" class="alerts"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Cohort Snapshot</h2>
+          <p>Top-level milestones with drop-off hotspots.</p>
+        </div>
+        <div id="cohortSnapshot" class="snapshot"></div>
+      </div>
+    </section>
+
+    <section class="panel roster">
+      <div class="panel-header">
+        <h2>Application Roster</h2>
+        <p>Track individual progress, last touch, and owner.</p>
+      </div>
+      <div id="rosterTable" class="table"></div>
+    </section>
+
+    <section class="panel brief" id="briefPanel" hidden>
+      <div class="panel-header">
+        <h2>Weekly Brief Draft</h2>
+        <p>Copy-ready summary for program leadership.</p>
+      </div>
+      <pre id="briefOutput"></pre>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
