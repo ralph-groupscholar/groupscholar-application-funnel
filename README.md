@@ -7,6 +7,7 @@ A local-first operational dashboard to track application flow, reviewer capacity
 - Stage-by-stage funnel conversion with drop-off visibility
 - Reviewer capacity and turnaround time tracking
 - Operational alerting for stalled files and review backlog
+- SLA watchlist for overdue application follow-ups
 - Weekly brief generator plus JSON export
 
 ## Tech

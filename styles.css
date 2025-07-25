@@ -240,6 +240,38 @@ h1 {
   margin-bottom: 4px;
 }
 
+.sla-list {
+  display: grid;
+  gap: 10px;
+}
+
+.sla-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--panel-light);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sla-card span {
+  color: var(--muted);
+  display: block;
+  margin-top: 4px;
+}
+
+.sla-card.warning {
+  border-color: rgba(255, 178, 0, 0.4);
+  background: rgba(255, 178, 0, 0.08);
+}
+
+.sla-card.critical {
+  border-color: rgba(255, 107, 107, 0.4);
+  background: rgba(255, 107, 107, 0.12);
+}
+
 .snapshot {
   display: grid;
   gap: 10px;

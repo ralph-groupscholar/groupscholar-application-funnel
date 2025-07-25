@@ -130,6 +130,7 @@ const generateBrief = document.getElementById("generateBrief");
 const funnelStages = document.getElementById("funnelStages");
 const reviewerTable = document.getElementById("reviewerTable");
 const alertList = document.getElementById("alertList");
+const slaList = document.getElementById("slaList");
 const rosterTable = document.getElementById("rosterTable");
 const cohortSnapshot = document.getElementById("cohortSnapshot");
 const briefPanel = document.getElementById("briefPanel");
@@ -139,6 +140,7 @@ const totalApplications = document.getElementById("totalApplications");
 const overallConversion = document.getElementById("overallConversion");
 
 const unique = (items) => Array.from(new Set(items)).sort();
+const today = new Date();
 
 const buildSelectOptions = () => {
   const cohorts = unique(data.map((item) => item.cohort));
@@ -271,6 +273,45 @@ const renderAlerts = (items) => {
     : "<p>No alerts. Funnel looks healthy.</p>";
 };
 
+const daysSince = (dateString) => {
+  const date = new Date(`${dateString}T00:00:00`);
+  const diff = today - date;
+  return Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)));
+};
+
+const renderSlaWatch = (items) => {
+  const watchItems = items
+    .map((item) => ({
+      ...item,
+      days: daysSince(item.lastUpdate)
+    }))
+    .filter((item) => item.days >= 10)
+    .sort((a, b) => b.days - a.days);
+
+  if (!watchItems.length) {
+    slaList.innerHTML = "<p>No SLA risks detected.</p>";
+    return;
+  }
+
+  slaList.innerHTML = watchItems
+    .map((item) => {
+      const severity = item.days >= 14 ? "critical" : "warning";
+      return `
+        <div class="sla-card ${severity}">
+          <div>
+            <strong>${item.name}</strong>
+            <span>${item.id} • ${item.stage}</span>
+          </div>
+          <div>
+            <strong>${item.days} days</strong>
+            <span>Owner: ${item.reviewer}</span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+};
+
 const renderSnapshot = (items) => {
   const stageHighlights = stages.map((stage) => {
     const count = items.filter((item) => item.stage === stage).length;
@@ -366,6 +407,7 @@ const render = () => {
   renderFunnel(items);
   renderReviewers(items);
   renderAlerts(items);
+  renderSlaWatch(items);
   renderSnapshot(items);
   renderRoster(items);
 };
