@@ -7,6 +7,15 @@ const stages = [
   "Awarded"
 ];
 
+const slaTargets = {
+  Submitted: 3,
+  Eligibility: 5,
+  Review: 7,
+  Interview: 6,
+  Final: 5,
+  Awarded: 0
+};
+
 const data = [
   {
     id: "GS-2041",
@@ -131,6 +140,8 @@ const funnelStages = document.getElementById("funnelStages");
 const reviewerTable = document.getElementById("reviewerTable");
 const alertList = document.getElementById("alertList");
 const slaList = document.getElementById("slaList");
+const slaMetrics = document.getElementById("slaMetrics");
+const stageMomentum = document.getElementById("stageMomentum");
 const rosterTable = document.getElementById("rosterTable");
 const cohortSnapshot = document.getElementById("cohortSnapshot");
 const briefPanel = document.getElementById("briefPanel");
@@ -141,6 +152,9 @@ const overallConversion = document.getElementById("overallConversion");
 
 const unique = (items) => Array.from(new Set(items)).sort();
 const today = new Date();
+const SLA_TARGET_DAYS = 7;
+const SLA_WARNING_DAYS = 10;
+const SLA_CRITICAL_DAYS = 14;
 
 const buildSelectOptions = () => {
   const cohorts = unique(data.map((item) => item.cohort));
@@ -285,7 +299,7 @@ const renderSlaWatch = (items) => {
       ...item,
       days: daysSince(item.lastUpdate)
     }))
-    .filter((item) => item.days >= 10)
+    .filter((item) => item.days >= SLA_WARNING_DAYS)
     .sort((a, b) => b.days - a.days);
 
   if (!watchItems.length) {
@@ -295,7 +309,7 @@ const renderSlaWatch = (items) => {
 
   slaList.innerHTML = watchItems
     .map((item) => {
-      const severity = item.days >= 14 ? "critical" : "warning";
+      const severity = item.days >= SLA_CRITICAL_DAYS ? "critical" : "warning";
       return `
         <div class="sla-card ${severity}">
           <div>
@@ -310,6 +324,72 @@ const renderSlaWatch = (items) => {
       `;
     })
     .join("");
+};
+
+const renderSlaMetrics = (items) => {
+  const activeItems = items.filter((item) => item.status !== "completed");
+  const avgAge = activeItems.length
+    ? (
+        activeItems.reduce((sum, item) => sum + daysSince(item.lastUpdate), 0) / activeItems.length
+      ).toFixed(1)
+    : "0.0";
+
+  const withinTarget = activeItems.filter((item) => daysSince(item.lastUpdate) < SLA_TARGET_DAYS)
+    .length;
+  const warnings = activeItems.filter(
+    (item) =>
+      daysSince(item.lastUpdate) >= SLA_WARNING_DAYS &&
+      daysSince(item.lastUpdate) < SLA_CRITICAL_DAYS
+  ).length;
+  const breaches = activeItems.filter(
+    (item) => daysSince(item.lastUpdate) >= SLA_CRITICAL_DAYS
+  ).length;
+
+  slaMetrics.innerHTML = `
+    <div class="sla-metric">
+      <span>Within target</span>
+      <strong>${withinTarget}</strong>
+      <div>${SLA_TARGET_DAYS}-day SLA</div>
+    </div>
+    <div class="sla-metric warning">
+      <span>Warnings</span>
+      <strong>${warnings}</strong>
+      <div>${SLA_WARNING_DAYS}+ days</div>
+    </div>
+    <div class="sla-metric critical">
+      <span>Breaches</span>
+      <strong>${breaches}</strong>
+      <div>${SLA_CRITICAL_DAYS}+ days</div>
+    </div>
+    <div class="sla-metric">
+      <span>Avg age</span>
+      <strong>${avgAge}</strong>
+      <div>Days since update</div>
+    </div>
+  `;
+};
+
+const renderStageMomentum = (items) => {
+  const rows = stages.map((stage) => {
+    const stageItems = items.filter((item) => item.stage === stage);
+    const avgAge = stageItems.length
+      ? (stageItems.reduce((sum, item) => sum + daysSince(item.lastUpdate), 0) / stageItems.length).toFixed(1)
+      : "0.0";
+    const stalled = stageItems.filter((item) => item.status === "stalled").length;
+    const active = stageItems.filter((item) => item.status === "active").length;
+    const risk = avgAge >= 14 ? "critical" : avgAge >= 10 ? "warning" : "";
+
+    return `
+      <div class="table-row ${risk}">
+        <div><strong>${stage}</strong><span>Stage</span></div>
+        <div><strong>${stageItems.length}</strong><span>In stage</span></div>
+        <div><strong>${avgAge} days</strong><span>Avg age</span></div>
+        <div><strong>${stalled}/${active}</strong><span>Stalled/active</span></div>
+      </div>
+    `;
+  });
+
+  stageMomentum.innerHTML = rows.join("");
 };
 
 const renderSnapshot = (items) => {
@@ -365,8 +445,18 @@ const renderBrief = (items) => {
   const awarded = items.filter((item) => item.stage === "Awarded").length;
   const stalled = items.filter((item) => item.status === "stalled").length;
   const backlog = items.filter((item) => item.stage === "Review").length;
+  const slaWarnings = items.filter(
+    (item) =>
+      item.status !== "completed" &&
+      daysSince(item.lastUpdate) >= SLA_WARNING_DAYS &&
+      daysSince(item.lastUpdate) < SLA_CRITICAL_DAYS
+  ).length;
+  const slaBreaches = items.filter(
+    (item) => item.status !== "completed" && daysSince(item.lastUpdate) >= SLA_CRITICAL_DAYS
+  ).length;
 
   briefOutput.textContent = `WEEKLY APPLICATION FUNNEL BRIEF\n\nCohort: ${cohortSelect.value}\nApplications in funnel: ${total}\nAwarded to date: ${awarded}\nStalled applications: ${stalled}\nReview backlog: ${backlog}\n\nKey moves\n- Shift ${backlog > 0 ? backlog : 1} files out of review if SLA risk continues.\n- Follow up with ${stalled} stalled scholars to unblock documentation.\n- Confirm interview capacity for next 7 days based on current pacing.\n\nReviewer load\n${buildReviewerLines(items)}\n\nSignals\n- Highest volume stage: ${stages.reduce((max, stage) => (items.filter((item) => item.stage === stage).length > max.count ? { stage, count: items.filter((item) => item.stage === stage).length } : max), { stage: stages[0], count: 0 }).stage}\n- Overall conversion: ${overallConversion.textContent}\n`;
+  briefOutput.textContent += `- SLA warnings: ${slaWarnings}\n- SLA breaches: ${slaBreaches}\n`;
 
   briefPanel.hidden = false;
   briefPanel.scrollIntoView({ behavior: "smooth" });
@@ -407,7 +497,9 @@ const render = () => {
   renderFunnel(items);
   renderReviewers(items);
   renderAlerts(items);
+  renderSlaMetrics(items);
   renderSlaWatch(items);
+  renderStageMomentum(items);
   renderSnapshot(items);
   renderRoster(items);
 };

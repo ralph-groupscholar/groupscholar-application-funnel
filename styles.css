@@ -245,6 +245,43 @@ h1 {
   gap: 10px;
 }
 
+.sla-metrics {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.sla-metric {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--panel-light);
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.sla-metric span {
+  color: var(--muted);
+  display: block;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+}
+
+.sla-metric strong {
+  font-size: 20px;
+}
+
+.sla-metric.warning {
+  border-color: rgba(255, 178, 0, 0.35);
+  background: rgba(255, 178, 0, 0.08);
+}
+
+.sla-metric.critical {
+  border-color: rgba(255, 107, 107, 0.4);
+  background: rgba(255, 107, 107, 0.12);
+}
+
 .sla-card {
   padding: 12px 14px;
   border-radius: 12px;
@@ -289,6 +326,16 @@ h1 {
   color: var(--muted);
   display: block;
   margin-bottom: 6px;
+}
+
+.table-row.warning {
+  border-color: rgba(255, 178, 0, 0.35);
+  background: rgba(255, 178, 0, 0.08);
+}
+
+.table-row.critical {
+  border-color: rgba(255, 107, 107, 0.4);
+  background: rgba(255, 107, 107, 0.12);
 }
 
 .roster {
