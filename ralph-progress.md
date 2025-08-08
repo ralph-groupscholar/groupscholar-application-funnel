@@ -8,6 +8,7 @@
 
 ## Iteration 3
 - Added SLA summary metrics with warning/breach counts plus a stage momentum panel highlighting average age and stalled ratios.
+- Deployed the latest dashboard to https://groupscholar-application-funnel.vercel.app.
 
 ## Iteration 3
 - Added an SLA watch panel that surfaces overdue applications with severity cues.
