@@ -141,9 +141,17 @@ const reviewerTable = document.getElementById("reviewerTable");
 const alertList = document.getElementById("alertList");
 const slaList = document.getElementById("slaList");
 const slaMetrics = document.getElementById("slaMetrics");
+const prioritySummary = document.getElementById("prioritySummary");
+const priorityList = document.getElementById("priorityList");
 const stageMomentum = document.getElementById("stageMomentum");
+const stageTargets = document.getElementById("stageTargets");
+const decisionQueue = document.getElementById("decisionQueue");
+const prioritySummary = document.getElementById("prioritySummary");
+const priorityList = document.getElementById("priorityList");
 const rosterTable = document.getElementById("rosterTable");
 const cohortSnapshot = document.getElementById("cohortSnapshot");
+const capacityForecast = document.getElementById("capacityForecast");
+const rebalanceList = document.getElementById("rebalanceList");
 const briefPanel = document.getElementById("briefPanel");
 const briefOutput = document.getElementById("briefOutput");
 const activeCohort = document.getElementById("activeCohort");
@@ -155,6 +163,31 @@ const today = new Date();
 const SLA_TARGET_DAYS = 7;
 const SLA_WARNING_DAYS = 10;
 const SLA_CRITICAL_DAYS = 14;
+const stageEffortHours = {
+  Submitted: 0.5,
+  Eligibility: 1,
+  Review: 2,
+  Interview: 3,
+  Final: 2,
+  Awarded: 0.5
+};
+const reviewerDailyCapacity = 4;
+const stagePriorityWeight = {
+  Submitted: 0.6,
+  Eligibility: 0.9,
+  Review: 1.2,
+  Interview: 1.6,
+  Final: 1.8,
+  Awarded: 0.2
+};
+const stageActionMap = {
+  Submitted: "Confirm intake completeness",
+  Eligibility: "Complete eligibility check",
+  Review: "Assign reviewer or advance",
+  Interview: "Schedule interview panel",
+  Final: "Confirm award decision",
+  Awarded: "Send award packet"
+};
 
 const buildSelectOptions = () => {
   const cohorts = unique(data.map((item) => item.cohort));
@@ -239,6 +272,94 @@ const renderReviewers = (items) => {
   });
 
   reviewerTable.innerHTML = rows.join("") || "<p>No reviewer data.</p>";
+};
+
+const renderCapacity = (items) => {
+  const activeItems = items.filter((item) => item.status !== "completed");
+  const reviewers = unique(activeItems.map((item) => item.reviewer));
+  const reviewerCount = reviewers.length;
+  const totalHours = activeItems.reduce(
+    (sum, item) => sum + (stageEffortHours[item.stage] || 1),
+    0
+  );
+  const dailyCapacity = reviewerCount * reviewerDailyCapacity;
+  const daysToClear = dailyCapacity ? (totalHours / dailyCapacity).toFixed(1) : "0.0";
+
+  const stageHours = stages.map((stage) => {
+    const count = activeItems.filter((item) => item.stage === stage).length;
+    return { stage, count, hours: count * (stageEffortHours[stage] || 1) };
+  });
+
+  const highestLoad = stageHours.reduce(
+    (max, current) => (current.hours > max.hours ? current : max),
+    stageHours[0] || { stage: "None", count: 0, hours: 0 }
+  );
+
+  capacityForecast.innerHTML = `
+    <div class="forecast-card">
+      <span>Active workload</span>
+      <strong>${totalHours.toFixed(1)} hrs</strong>
+      <div>${activeItems.length} active files</div>
+    </div>
+    <div class="forecast-card">
+      <span>Reviewer capacity</span>
+      <strong>${dailyCapacity} hrs/day</strong>
+      <div>${reviewerCount || 0} reviewers</div>
+    </div>
+    <div class="forecast-card">
+      <span>Clearance estimate</span>
+      <strong>${daysToClear} days</strong>
+      <div>At current pacing</div>
+    </div>
+    <div class="forecast-card">
+      <span>Heaviest stage</span>
+      <strong>${highestLoad.stage}</strong>
+      <div>${highestLoad.hours.toFixed(1)} hrs queued</div>
+    </div>
+  `;
+
+  const reviewerLoad = reviewers.reduce((acc, reviewer) => {
+    acc[reviewer] = activeItems.filter((item) => item.reviewer === reviewer).length;
+    return acc;
+  }, {});
+  const avgLoad = reviewerCount
+    ? activeItems.length / reviewerCount
+    : 0;
+  const suggestions = [];
+
+  Object.entries(reviewerLoad).forEach(([reviewer, count]) => {
+    if (count > avgLoad + 1) {
+      suggestions.push({
+        title: "Rebalance reviewer load",
+        body: `${reviewer} holds ${count} files. Move ${Math.ceil(count - avgLoad)} to another reviewer.`
+      });
+    }
+  });
+
+  if (highestLoad.stage === "Review" && highestLoad.count >= 2) {
+    suggestions.push({
+      title: "Reduce review backlog",
+      body: `Shift ${highestLoad.count} review files to interview scheduling or add review coverage.`
+    });
+  }
+
+  if (!suggestions.length) {
+    suggestions.push({
+      title: "Load looks balanced",
+      body: "No immediate reassignments needed. Maintain current reviewer rotation."
+    });
+  }
+
+  rebalanceList.innerHTML = suggestions
+    .map(
+      (item) => `
+      <div class="rebalance-item">
+        <strong>${item.title}</strong>
+        <span>${item.body}</span>
+      </div>
+    `
+    )
+    .join("");
 };
 
 const renderAlerts = (items) => {
@@ -392,6 +513,138 @@ const renderStageMomentum = (items) => {
   stageMomentum.innerHTML = rows.join("");
 };
 
+const renderStageTargets = (items) => {
+  const rows = stages.map((stage) => {
+    const stageItems = items.filter((item) => item.stage === stage);
+    const avgAge = stageItems.length
+      ? (stageItems.reduce((sum, item) => sum + daysSince(item.lastUpdate), 0) / stageItems.length).toFixed(1)
+      : "0.0";
+    const target = slaTargets[stage] ?? SLA_TARGET_DAYS;
+    const gap = (avgAge - target).toFixed(1);
+    const risk = avgAge >= SLA_CRITICAL_DAYS ? "critical" : avgAge >= SLA_WARNING_DAYS ? "warning" : "";
+
+    return `
+      <div class="table-row ${risk}">
+        <div><strong>${stage}</strong><span>Stage target</span></div>
+        <div><strong>${target} days</strong><span>SLA target</span></div>
+        <div><strong>${avgAge} days</strong><span>Current avg</span></div>
+        <div><strong>${gap} days</strong><span>Above target</span></div>
+      </div>
+    `;
+  });
+
+  stageTargets.innerHTML = rows.join("");
+};
+
+const renderDecisionQueue = (items) => {
+  const queue = items
+    .filter((item) => item.status !== "completed" && ["Interview", "Final"].includes(item.stage))
+    .map((item) => ({
+      ...item,
+      days: daysSince(item.lastUpdate),
+      action: item.stage === "Interview" ? "Schedule interview panel" : "Confirm award decision"
+    }))
+    .sort((a, b) => b.days - a.days)
+    .slice(0, 6);
+
+  if (!queue.length) {
+    decisionQueue.innerHTML = "<p>No decision items queued.</p>";
+    return;
+  }
+
+  decisionQueue.innerHTML = queue
+    .map((item) => {
+      const severity = item.days >= SLA_CRITICAL_DAYS ? "critical" : item.days >= SLA_WARNING_DAYS ? "warning" : "";
+      return `
+        <div class="decision-card ${severity}">
+          <div>
+            <strong>${item.name}</strong>
+            <span>${item.id} • ${item.stage}</span>
+          </div>
+          <div>
+            <strong>${item.days} days idle</strong>
+            <span>${item.action} • ${item.reviewer}</span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+};
+
+const renderPriorityQueue = (items) => {
+  const activeItems = items.filter((item) => item.status !== "completed");
+  if (!activeItems.length) {
+    prioritySummary.innerHTML = "<p>No active files in this cohort.</p>";
+    priorityList.innerHTML = "";
+    return;
+  }
+
+  const enriched = activeItems.map((item) => {
+    const days = daysSince(item.lastUpdate);
+    const stageWeight = stagePriorityWeight[item.stage] || 1;
+    const statusWeight = item.status === "stalled" ? 1.4 : 1;
+    const score = Math.round(days * stageWeight * statusWeight * 10) / 10;
+    const severity = days >= SLA_CRITICAL_DAYS ? "critical" : days >= SLA_WARNING_DAYS ? "warning" : "";
+    const action = stageActionMap[item.stage] || "Advance file";
+
+    return { ...item, days, score, severity, action };
+  });
+
+  const topStageRisk = enriched
+    .filter((item) => item.days >= SLA_WARNING_DAYS)
+    .reduce((acc, item) => {
+      acc[item.stage] = (acc[item.stage] || 0) + 1;
+      return acc;
+    }, {});
+
+  const topStage = Object.entries(topStageRisk).sort((a, b) => b[1] - a[1])[0];
+  const avgIdle = (
+    enriched.reduce((sum, item) => sum + item.days, 0) / enriched.length
+  ).toFixed(1);
+  const atRisk = enriched.filter((item) => item.days >= SLA_WARNING_DAYS).length;
+
+  prioritySummary.innerHTML = `
+    <div class="priority-metric">
+      <span>At-risk files</span>
+      <strong>${atRisk}</strong>
+      <div>${SLA_WARNING_DAYS}+ days idle</div>
+    </div>
+    <div class="priority-metric">
+      <span>Avg idle time</span>
+      <strong>${avgIdle} days</strong>
+      <div>Across active files</div>
+    </div>
+    <div class="priority-metric">
+      <span>Top risk stage</span>
+      <strong>${topStage ? topStage[0] : "None"}</strong>
+      <div>${topStage ? `${topStage[1]} files` : "No SLA risk"}</div>
+    </div>
+  `;
+
+  const ranked = enriched
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 6);
+
+  priorityList.innerHTML = ranked
+    .map((item) => `
+      <div class="priority-card ${item.severity}">
+        <div>
+          <strong>${item.name}</strong>
+          <span>${item.id} • ${item.stage}</span>
+        </div>
+        <div>
+          <strong>${item.days} days idle</strong>
+          <span>${item.action} • ${item.reviewer}</span>
+        </div>
+        <div class="priority-score">
+          <span>Priority</span>
+          <strong>${item.score}</strong>
+        </div>
+      </div>
+    `)
+    .join("");
+};
+
 const renderSnapshot = (items) => {
   const stageHighlights = stages.map((stage) => {
     const count = items.filter((item) => item.stage === stage).length;
@@ -496,10 +749,14 @@ const render = () => {
   activeCohort.textContent = cohortSelect.value;
   renderFunnel(items);
   renderReviewers(items);
+  renderCapacity(items);
   renderAlerts(items);
   renderSlaMetrics(items);
   renderSlaWatch(items);
+  renderPriorityQueue(items);
   renderStageMomentum(items);
+  renderStageTargets(items);
+  renderDecisionQueue(items);
   renderSnapshot(items);
   renderRoster(items);
 };

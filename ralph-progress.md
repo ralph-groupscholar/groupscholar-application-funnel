@@ -13,3 +13,15 @@
 ## Iteration 3
 - Added an SLA watch panel that surfaces overdue applications with severity cues.
 - Deployed the dashboard to https://groupscholar-application-funnel.vercel.app.
+
+## Iteration 4
+- Added a stage target tracker that compares SLA targets to current average age by stage.
+- Added a decision queue highlighting interview and final files needing movement.
+
+## Iteration 4
+- Added a capacity forecast panel with workload hours, clearance estimates, and rebalance suggestions.
+- Deployed the dashboard to https://groupscholar-application-funnel.vercel.app.
+
+## Iteration 6
+- Added a priority queue that ranks active files by SLA risk, stage weight, and idle time with action prompts.
+- Added a priority summary with at-risk counts, average idle time, and top risk stage.

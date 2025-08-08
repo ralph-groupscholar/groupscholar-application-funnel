@@ -77,6 +77,15 @@
 
       <div class="panel">
         <div class="panel-header">
+          <h2>Capacity Forecast</h2>
+          <p>Hours to clear active workload and rebalance guidance.</p>
+        </div>
+        <div id="capacityForecast" class="forecast-grid"></div>
+        <div id="rebalanceList" class="rebalance-list"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
           <h2>Operational Alerts</h2>
           <p>Automatic flags for stalled cohorts and backlog.</p>
         </div>
@@ -94,10 +103,35 @@
 
       <div class="panel">
         <div class="panel-header">
+          <h2>Priority Queue</h2>
+          <p>Auto-ranked files needing action next.</p>
+        </div>
+        <div id="prioritySummary" class="priority-summary"></div>
+        <div id="priorityList" class="priority-list"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
           <h2>Stage Momentum</h2>
           <p>Average age and stalled ratios per stage.</p>
         </div>
         <div id="stageMomentum" class="table"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Stage Target Tracker</h2>
+          <p>Actual age versus SLA targets.</p>
+        </div>
+        <div id="stageTargets" class="table"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Decision Queue</h2>
+          <p>Interview/final files needing movement.</p>
+        </div>
+        <div id="decisionQueue" class="decision-list"></div>
       </div>
 
       <div class="panel">
