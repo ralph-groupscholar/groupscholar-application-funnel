@@ -141,17 +141,22 @@ const reviewerTable = document.getElementById("reviewerTable");
 const alertList = document.getElementById("alertList");
 const slaList = document.getElementById("slaList");
 const slaMetrics = document.getElementById("slaMetrics");
-const prioritySummary = document.getElementById("prioritySummary");
-const priorityList = document.getElementById("priorityList");
+const cadenceSummary = document.getElementById("cadenceSummary");
+const cadenceList = document.getElementById("cadenceList");
 const stageMomentum = document.getElementById("stageMomentum");
 const stageTargets = document.getElementById("stageTargets");
 const decisionQueue = document.getElementById("decisionQueue");
 const prioritySummary = document.getElementById("prioritySummary");
 const priorityList = document.getElementById("priorityList");
+const reviewerRiskMetrics = document.getElementById("reviewerRiskMetrics");
+const reviewerRiskList = document.getElementById("reviewerRiskList");
+const reviewerPlaybook = document.getElementById("reviewerPlaybook");
 const rosterTable = document.getElementById("rosterTable");
 const cohortSnapshot = document.getElementById("cohortSnapshot");
 const capacityForecast = document.getElementById("capacityForecast");
 const rebalanceList = document.getElementById("rebalanceList");
+const outreachMetrics = document.getElementById("outreachMetrics");
+const outreachList = document.getElementById("outreachList");
 const briefPanel = document.getElementById("briefPanel");
 const briefOutput = document.getElementById("briefOutput");
 const activeCohort = document.getElementById("activeCohort");
@@ -187,6 +192,22 @@ const stageActionMap = {
   Interview: "Schedule interview panel",
   Final: "Confirm award decision",
   Awarded: "Send award packet"
+};
+const outreachCadenceDays = {
+  Submitted: 2,
+  Eligibility: 3,
+  Review: 4,
+  Interview: 3,
+  Final: 2,
+  Awarded: 0
+};
+const outreachTouchpointMap = {
+  Submitted: "Send intake confirmation",
+  Eligibility: "Request missing documents",
+  Review: "Share review timeline update",
+  Interview: "Confirm interview logistics",
+  Final: "Provide decision timeline",
+  Awarded: "Share onboarding next steps"
 };
 
 const buildSelectOptions = () => {
@@ -362,6 +383,131 @@ const renderCapacity = (items) => {
     .join("");
 };
 
+const renderReviewerRisk = (items) => {
+  const activeItems = items.filter((item) => item.status !== "completed");
+  const reviewers = unique(activeItems.map((item) => item.reviewer));
+  const reviewerCount = reviewers.length;
+  const avgLoad = reviewerCount ? activeItems.length / reviewerCount : 0;
+
+  const riskRows = reviewers.map((reviewer) => {
+    const owned = activeItems.filter((item) => item.reviewer === reviewer);
+    const stalled = owned.filter((item) => item.status === "stalled").length;
+    const warnings = owned.filter((item) => daysSince(item.lastUpdate) >= SLA_WARNING_DAYS).length;
+    const breaches = owned.filter((item) => daysSince(item.lastUpdate) >= SLA_CRITICAL_DAYS).length;
+    const avgAge = owned.length
+      ? owned.reduce((sum, item) => sum + daysSince(item.lastUpdate), 0) / owned.length
+      : 0;
+    const riskScore = Math.round((avgAge * 0.6 + warnings * 2 + breaches * 3 + stalled * 1.5) * 10) / 10;
+    const severity = breaches || avgAge >= SLA_CRITICAL_DAYS ? "critical" : warnings || avgAge >= SLA_WARNING_DAYS ? "warning" : "";
+
+    return {
+      reviewer,
+      owned: owned.length,
+      stalled,
+      warnings,
+      breaches,
+      avgAge: avgAge.toFixed(1),
+      riskScore,
+      severity,
+      loadDelta: owned.length - avgLoad
+    };
+  });
+
+  const overCapacity = riskRows.filter((row) => row.owned > avgLoad + 1).length;
+  const topRisk = riskRows.sort((a, b) => b.riskScore - a.riskScore)[0];
+  const avgIdle = riskRows.length
+    ? (
+        riskRows.reduce((sum, row) => sum + Number(row.avgAge), 0) / riskRows.length
+      ).toFixed(1)
+    : "0.0";
+
+  reviewerRiskMetrics.innerHTML = `
+    <div class="risk-metric">
+      <span>Reviewers online</span>
+      <strong>${reviewerCount || 0}</strong>
+      <div>${activeItems.length} active files</div>
+    </div>
+    <div class="risk-metric warning">
+      <span>Over-capacity</span>
+      <strong>${overCapacity}</strong>
+      <div>Above avg load</div>
+    </div>
+    <div class="risk-metric">
+      <span>Avg idle days</span>
+      <strong>${avgIdle}</strong>
+      <div>Across reviewers</div>
+    </div>
+    <div class="risk-metric ${topRisk && topRisk.severity ? topRisk.severity : ""}">
+      <span>Top risk</span>
+      <strong>${topRisk ? topRisk.reviewer : "None"}</strong>
+      <div>${topRisk ? `${topRisk.riskScore} risk score` : "No active risk"}</div>
+    </div>
+  `;
+
+  reviewerRiskList.innerHTML = riskRows.length
+    ? riskRows
+        .sort((a, b) => b.riskScore - a.riskScore)
+        .slice(0, 6)
+        .map(
+          (row) => `
+        <div class="risk-card ${row.severity}">
+          <div>
+            <strong>${row.reviewer}</strong>
+            <span>${row.owned} files • ${row.avgAge} days avg idle</span>
+          </div>
+          <div>
+            <strong>${row.riskScore} risk score</strong>
+            <span>${row.warnings} warnings • ${row.breaches} breaches</span>
+          </div>
+          <div class="risk-chip">
+            <span>Load delta</span>
+            <strong>${row.loadDelta >= 0 ? "+" : ""}${row.loadDelta.toFixed(1)}</strong>
+          </div>
+        </div>
+      `
+        )
+        .join("")
+    : "<p>No active reviewer risk signals.</p>";
+
+  const playbook = [];
+  riskRows
+    .filter((row) => row.owned > avgLoad + 1)
+    .forEach((row) => {
+      playbook.push({
+        title: "Shift workload",
+        body: `${row.reviewer} is carrying ${row.owned} files (${row.loadDelta.toFixed(1)} above average). Reassign ${Math.ceil(row.loadDelta)} file(s).`
+      });
+    });
+
+  riskRows
+    .filter((row) => row.breaches > 0)
+    .forEach((row) => {
+      playbook.push({
+        title: "Escalate SLA breaches",
+        body: `${row.reviewer} has ${row.breaches} breached file(s). Prioritize immediate reviews or add backup coverage.`
+      });
+    });
+
+  if (!playbook.length) {
+    playbook.push({
+      title: "Coverage steady",
+      body: "Reviewer load and SLA risk look stable. Maintain current rotation and keep weekly check-ins."
+    });
+  }
+
+  reviewerPlaybook.innerHTML = playbook
+    .slice(0, 4)
+    .map(
+      (item) => `
+      <div class="playbook-item">
+        <strong>${item.title}</strong>
+        <span>${item.body}</span>
+      </div>
+    `
+    )
+    .join("");
+};
+
 const renderAlerts = (items) => {
   const alerts = [];
   const stalled = items.filter((item) => item.status === "stalled");
@@ -413,6 +559,14 @@ const daysSince = (dateString) => {
   const diff = today - date;
   return Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)));
 };
+
+const addDays = (dateString, days) => {
+  const date = new Date(`${dateString}T00:00:00`);
+  date.setDate(date.getDate() + days);
+  return date;
+};
+
+const formatDate = (date) => date.toISOString().slice(0, 10);
 
 const renderSlaWatch = (items) => {
   const watchItems = items
@@ -488,6 +642,89 @@ const renderSlaMetrics = (items) => {
       <div>Days since update</div>
     </div>
   `;
+};
+
+const renderCadencePlan = (items) => {
+  const activeItems = items.filter((item) => item.status !== "completed");
+  if (!activeItems.length) {
+    cadenceSummary.innerHTML = "<p>No active files to plan.</p>";
+    cadenceList.innerHTML = "";
+    return;
+  }
+
+  const enriched = activeItems.map((item) => {
+    const target = slaTargets[item.stage] ?? SLA_TARGET_DAYS;
+    const idleDays = daysSince(item.lastUpdate);
+    const daysUntilDue = target - idleDays;
+    const dueDate = formatDate(addDays(item.lastUpdate, target));
+    const severity = daysUntilDue < 0 ? "critical" : daysUntilDue <= 3 ? "warning" : "";
+    const status =
+      daysUntilDue < 0
+        ? `Overdue by ${Math.abs(daysUntilDue)} days`
+        : `Due in ${daysUntilDue} days`;
+
+    return { ...item, target, idleDays, daysUntilDue, dueDate, severity, status };
+  });
+
+  const overdue = enriched.filter((item) => item.daysUntilDue < 0).length;
+  const dueSoon = enriched.filter((item) => item.daysUntilDue >= 0 && item.daysUntilDue <= 3).length;
+  const dueThisWeek = enriched.filter((item) => item.daysUntilDue > 3 && item.daysUntilDue <= 7).length;
+  const topRiskStage = Object.entries(
+    enriched
+      .filter((item) => item.daysUntilDue <= 3)
+      .reduce((acc, item) => {
+        acc[item.stage] = (acc[item.stage] || 0) + 1;
+        return acc;
+      }, {})
+  ).sort((a, b) => b[1] - a[1])[0];
+
+  cadenceSummary.innerHTML = `
+    <div class="cadence-metric critical">
+      <span>Overdue</span>
+      <strong>${overdue}</strong>
+      <div>Past SLA target</div>
+    </div>
+    <div class="cadence-metric warning">
+      <span>Due in 72h</span>
+      <strong>${dueSoon}</strong>
+      <div>Needs attention</div>
+    </div>
+    <div class="cadence-metric">
+      <span>Due this week</span>
+      <strong>${dueThisWeek}</strong>
+      <div>Within 7 days</div>
+    </div>
+    <div class="cadence-metric">
+      <span>Top risk stage</span>
+      <strong>${topRiskStage ? topRiskStage[0] : "None"}</strong>
+      <div>${topRiskStage ? `${topRiskStage[1]} files` : "No near-term risk"}</div>
+    </div>
+  `;
+
+  const ranked = enriched
+    .sort((a, b) => a.daysUntilDue - b.daysUntilDue)
+    .slice(0, 6);
+
+  cadenceList.innerHTML = ranked
+    .map(
+      (item) => `
+      <div class="cadence-card ${item.severity}">
+        <div>
+          <strong>${item.name}</strong>
+          <span>${item.id} • ${item.stage}</span>
+        </div>
+        <div>
+          <strong>${item.status}</strong>
+          <span>Owner: ${item.reviewer} • Due ${item.dueDate}</span>
+        </div>
+        <div class="cadence-chip">
+          <span>Target</span>
+          <strong>${item.target} days</strong>
+        </div>
+      </div>
+    `
+    )
+    .join("");
 };
 
 const renderStageMomentum = (items) => {
@@ -645,6 +882,86 @@ const renderPriorityQueue = (items) => {
     .join("");
 };
 
+const renderOutreachCadence = (items) => {
+  const activeItems = items.filter((item) => item.status !== "completed");
+  const cadenceItems = activeItems
+    .map((item) => {
+      const cadence = outreachCadenceDays[item.stage] ?? 3;
+      if (!cadence) return null;
+      const dueDate = addDays(item.lastUpdate, cadence);
+      const daysToDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+      const severity = daysToDue < 0 ? "critical" : daysToDue <= 2 ? "warning" : "";
+      const statusLabel =
+        daysToDue < 0
+          ? `${Math.abs(daysToDue)} days overdue`
+          : daysToDue === 0
+          ? "Due today"
+          : `${daysToDue} days until due`;
+      const action = outreachTouchpointMap[item.stage] || "Send update";
+
+      return {
+        ...item,
+        cadence,
+        dueDate,
+        daysToDue,
+        severity,
+        statusLabel,
+        action
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.daysToDue - b.daysToDue);
+
+  const overdue = cadenceItems.filter((item) => item.daysToDue < 0).length;
+  const dueSoon = cadenceItems.filter(
+    (item) => item.daysToDue >= 0 && item.daysToDue <= 2
+  ).length;
+  const dueWeek = cadenceItems.filter(
+    (item) => item.daysToDue >= 0 && item.daysToDue <= 7
+  ).length;
+
+  outreachMetrics.innerHTML = `
+    <div class="cadence-metric critical">
+      <span>Overdue touchpoints</span>
+      <strong>${overdue}</strong>
+      <div>Past due cadence</div>
+    </div>
+    <div class="cadence-metric warning">
+      <span>Due soon</span>
+      <strong>${dueSoon}</strong>
+      <div>Next 48 hours</div>
+    </div>
+    <div class="cadence-metric">
+      <span>Due this week</span>
+      <strong>${dueWeek}</strong>
+      <div>Next 7 days</div>
+    </div>
+  `;
+
+  const listItems = cadenceItems
+    .filter((item) => item.daysToDue <= 7)
+    .slice(0, 6);
+
+  outreachList.innerHTML = listItems.length
+    ? listItems
+        .map(
+          (item) => `
+        <div class="cadence-card ${item.severity}">
+          <div>
+            <strong>${item.name}</strong>
+            <span>${item.id} • ${item.stage}</span>
+          </div>
+          <div>
+            <strong>${item.statusLabel}</strong>
+            <span>${item.action} • ${formatDate(item.dueDate)}</span>
+          </div>
+        </div>
+      `
+        )
+        .join("")
+    : "<p>No outreach touchpoints due in the next week.</p>";
+};
+
 const renderSnapshot = (items) => {
   const stageHighlights = stages.map((stage) => {
     const count = items.filter((item) => item.stage === stage).length;
@@ -753,10 +1070,12 @@ const render = () => {
   renderAlerts(items);
   renderSlaMetrics(items);
   renderSlaWatch(items);
+  renderOutreachCadence(items);
   renderPriorityQueue(items);
   renderStageMomentum(items);
   renderStageTargets(items);
   renderDecisionQueue(items);
+  renderReviewerRisk(items);
   renderSnapshot(items);
   renderRoster(items);
 };

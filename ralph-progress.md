@@ -25,3 +25,7 @@
 ## Iteration 6
 - Added a priority queue that ranks active files by SLA risk, stage weight, and idle time with action prompts.
 - Added a priority summary with at-risk counts, average idle time, and top risk stage.
+
+## Iteration 7
+- Added a reviewer risk radar panel with load, SLA exposure, and risk scoring.
+- Added an escalation playbook to prompt workload shifts and breach triage.
