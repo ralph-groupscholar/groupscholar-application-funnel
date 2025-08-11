@@ -8,10 +8,11 @@ A local-first operational dashboard to track application flow, reviewer capacity
 - Reviewer capacity and turnaround time tracking
 - Operational alerting for stalled files and review backlog
 - SLA watchlist for overdue application follow-ups
+- Live snapshot panel backed by a Postgres data store (with safe fallback data)
 - Weekly brief generator plus JSON export
 
 ## Tech
-- HTML, CSS, and vanilla JavaScript (no build step)
+- HTML, CSS, vanilla JavaScript, and a Node serverless snapshot endpoint
 
 ## Run
 Open `index.html` in a browser.

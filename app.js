@@ -159,9 +159,12 @@ const outreachMetrics = document.getElementById("outreachMetrics");
 const outreachList = document.getElementById("outreachList");
 const briefPanel = document.getElementById("briefPanel");
 const briefOutput = document.getElementById("briefOutput");
+const briefStatus = document.getElementById("briefStatus");
 const activeCohort = document.getElementById("activeCohort");
 const totalApplications = document.getElementById("totalApplications");
 const overallConversion = document.getElementById("overallConversion");
+const liveSnapshot = document.getElementById("liveSnapshot");
+const liveSnapshotNotes = document.getElementById("liveSnapshotNotes");
 
 const unique = (items) => Array.from(new Set(items)).sort();
 const today = new Date();
@@ -1043,6 +1046,90 @@ const buildReviewerLines = (items) => {
     .join("\n");
 };
 
+const formatDateTime = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown";
+  }
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+};
+
+const formatPercent = (value) => `${Math.round(value * 1000) / 10}%`;
+
+const buildFallbackSnapshot = (note) => {
+  const total = data.length;
+  const active = data.filter((item) => item.status === "active").length;
+  const stalled = data.filter((item) => item.status === "stalled").length;
+  const awarded = data.filter((item) => item.stage === "Awarded").length;
+  return {
+    capturedAt: new Date().toISOString(),
+    totalApplications: total,
+    activeApplications: active,
+    stalledApplications: stalled,
+    conversionRate: total ? awarded / total : 0,
+    source: "fallback",
+    note
+  };
+};
+
+const renderLiveSnapshot = (snapshot) => {
+  if (!liveSnapshot) {
+    return;
+  }
+
+  const source = snapshot.source || "local";
+  const isFallback = source !== "database";
+  const sourceLabel = isFallback ? "Fallback" : "Database";
+
+  liveSnapshot.innerHTML = `
+    <div class="sync-card">
+      <span class="label">Captured</span>
+      <strong>${formatDateTime(snapshot.capturedAt)}</strong>
+      <span class="sync-pill ${isFallback ? "warn" : ""}">${sourceLabel}</span>
+    </div>
+    <div class="sync-card">
+      <span class="label">Total Apps</span>
+      <strong>${snapshot.totalApplications}</strong>
+      <span class="label">Active: ${snapshot.activeApplications}</span>
+    </div>
+    <div class="sync-card">
+      <span class="label">Stalled</span>
+      <strong>${snapshot.stalledApplications}</strong>
+      <span class="label">Conversion</span>
+      <strong>${formatPercent(snapshot.conversionRate)}</strong>
+    </div>
+  `;
+
+  liveSnapshotNotes.textContent =
+    snapshot.note || "Snapshot pulled from the production pipeline for leadership briefings.";
+};
+
+const loadLiveSnapshot = async () => {
+  if (!liveSnapshot) {
+    return;
+  }
+
+  liveSnapshotNotes.textContent = "Loading live snapshot...";
+  try {
+    const response = await fetch("/api/funnel-snapshot", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error("Snapshot unavailable");
+    }
+    const payload = await response.json();
+    renderLiveSnapshot(payload);
+  } catch (error) {
+    renderLiveSnapshot(
+      buildFallbackSnapshot("Live sync unavailable. Showing local sample totals for context.")
+    );
+  }
+};
+
 const exportData = (items) => {
   const payload = {
     generatedAt: new Date().toISOString(),
@@ -1083,6 +1170,7 @@ const render = () => {
 buildSelectOptions();
 cohortSelect.value = "Spring 2026";
 render();
+loadLiveSnapshot();
 
 [cohortSelect, reviewerFilter, statusFilter, searchInput].forEach((control) => {
   control.addEventListener("input", render);

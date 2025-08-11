@@ -164,6 +164,48 @@ h1 {
   min-height: 220px;
 }
 
+.sync-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.sync-card {
+  background: var(--panel-light);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sync-card strong {
+  font-size: 18px;
+}
+
+.sync-pill {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  background: rgba(91, 214, 255, 0.16);
+  color: var(--accent-2);
+}
+
+.sync-pill.warn {
+  background: rgba(255, 178, 0, 0.18);
+  color: var(--accent);
+}
+
+.sync-notes {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .panel-header h2 {
   font-size: 20px;
   margin-bottom: 6px;

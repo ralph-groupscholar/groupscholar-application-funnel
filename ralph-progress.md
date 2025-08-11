@@ -29,3 +29,8 @@
 ## Iteration 7
 - Added a reviewer risk radar panel with load, SLA exposure, and risk scoring.
 - Added an escalation playbook to prompt workload shifts and breach triage.
+
+## Iteration 21
+- Added a live data sync panel that pulls the latest funnel snapshot and shows capture time plus totals.
+- Created a serverless snapshot endpoint backed by Postgres with schema setup and safe fallbacks.
+- Added snapshot styling and fallback messaging to keep the dashboard useful when live data is unavailable.
