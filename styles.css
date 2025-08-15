@@ -634,6 +634,39 @@ h1 {
   min-height: auto;
 }
 
+.brief-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: rgba(108, 198, 255, 0.12);
+  color: #cfe7ff;
+  border: 1px solid rgba(108, 198, 255, 0.3);
+}
+
+.brief-status[data-tone="success"] {
+  background: rgba(92, 224, 154, 0.12);
+  color: #d1f5df;
+  border-color: rgba(92, 224, 154, 0.35);
+}
+
+.brief-status[data-tone="warning"] {
+  background: rgba(255, 178, 0, 0.12);
+  color: #ffe8b0;
+  border-color: rgba(255, 178, 0, 0.4);
+}
+
+.brief-status[data-tone="pending"] {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f7f7f7;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
 .brief pre {
   background: #0c0f14;
   border-radius: 14px;

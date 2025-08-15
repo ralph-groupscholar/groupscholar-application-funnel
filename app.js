@@ -16,7 +16,7 @@ const slaTargets = {
   Awarded: 0
 };
 
-const data = [
+const sampleData = [
   {
     id: "GS-2041",
     name: "Ari Lennox",
@@ -129,6 +129,8 @@ const data = [
   }
 ];
 
+let data = [...sampleData];
+
 const cohortSelect = document.getElementById("cohortSelect");
 const reviewerFilter = document.getElementById("reviewerFilter");
 const statusFilter = document.getElementById("statusFilter");
@@ -155,6 +157,8 @@ const rosterTable = document.getElementById("rosterTable");
 const cohortSnapshot = document.getElementById("cohortSnapshot");
 const capacityForecast = document.getElementById("capacityForecast");
 const rebalanceList = document.getElementById("rebalanceList");
+const liveSnapshot = document.getElementById("liveSnapshot");
+const liveSnapshotNotes = document.getElementById("liveSnapshotNotes");
 const outreachMetrics = document.getElementById("outreachMetrics");
 const outreachList = document.getElementById("outreachList");
 const briefPanel = document.getElementById("briefPanel");
@@ -216,6 +220,12 @@ const outreachTouchpointMap = {
 const buildSelectOptions = () => {
   const cohorts = unique(data.map((item) => item.cohort));
   const reviewers = unique(data.map((item) => item.reviewer));
+
+  if (!cohorts.length) {
+    cohortSelect.innerHTML = '<option value="">No cohorts</option>';
+    reviewerFilter.innerHTML = '<option value="all">All</option>';
+    return;
+  }
 
   cohortSelect.innerHTML = cohorts
     .map((cohort) => `<option value="${cohort}">${cohort}</option>`)
@@ -1033,6 +1043,8 @@ const renderBrief = (items) => {
 
   briefPanel.hidden = false;
   briefPanel.scrollIntoView({ behavior: "smooth" });
+
+  saveBrief(items, briefOutput.textContent);
 };
 
 const buildReviewerLines = (items) => {
@@ -1046,10 +1058,111 @@ const buildReviewerLines = (items) => {
     .join("\n");
 };
 
+const formatTimestamp = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  return parsed.toLocaleString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+};
+
+const setBriefStatus = (message, tone) => {
+  if (!briefStatus) {
+    return;
+  }
+
+  briefStatus.textContent = message;
+  briefStatus.dataset.tone = tone;
+};
+
+const saveBrief = async (items, summary) => {
+  setBriefStatus("Saving brief...", "pending");
+
+  const payload = {
+    cohort: cohortSelect.value,
+    summary,
+    generatedAt: new Date().toISOString(),
+    metrics: {
+      total: items.length,
+      awarded: items.filter((item) => item.stage === "Awarded").length,
+      stalled: items.filter((item) => item.status === "stalled").length,
+      backlog: items.filter((item) => item.stage === "Review").length,
+      slaWarnings: items.filter(
+        (item) =>
+          item.status !== "completed" &&
+          daysSince(item.lastUpdate) >= SLA_WARNING_DAYS &&
+          daysSince(item.lastUpdate) < SLA_CRITICAL_DAYS
+      ).length,
+      slaBreaches: items.filter(
+        (item) => item.status !== "completed" && daysSince(item.lastUpdate) >= SLA_CRITICAL_DAYS
+      ).length
+    }
+  };
+
+  try {
+    const response = await fetch("/api/briefs", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error("Brief save failed");
+    }
+
+    const result = await response.json();
+    const savedAt = formatTimestamp(result?.brief?.created_at || result?.brief?.generated_at);
+    setBriefStatus(savedAt ? `Saved to pipeline on ${savedAt}` : "Saved to pipeline", "success");
+  } catch (error) {
+    setBriefStatus("Brief saved locally only (pipeline unavailable)", "warning");
+  }
+};
+
+const loadLatestBrief = async () => {
+  if (!briefStatus) {
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/briefs", { method: "GET" });
+    if (!response.ok) {
+      throw new Error("Brief fetch failed");
+    }
+
+    const result = await response.json();
+    const latest = result?.briefs?.[0];
+    if (latest) {
+      const savedAt = formatTimestamp(latest.created_at || latest.generated_at);
+      setBriefStatus(savedAt ? `Last brief saved on ${savedAt}` : "Last brief saved to pipeline", "info");
+      return;
+    }
+
+    setBriefStatus("No brief saved yet", "info");
+  } catch (error) {
+    setBriefStatus("Pipeline offline (local-only mode)", "warning");
+  }
+};
+
 const formatDateTime = (value) => {
+  if (!value) {
+    return "Not available";
+  }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "Unknown";
+    return "Not available";
   }
   return date.toLocaleString("en-US", {
     month: "short",
@@ -1060,73 +1173,49 @@ const formatDateTime = (value) => {
   });
 };
 
-const formatPercent = (value) => `${Math.round(value * 1000) / 10}%`;
-
-const buildFallbackSnapshot = (note) => {
-  const total = data.length;
-  const active = data.filter((item) => item.status === "active").length;
-  const stalled = data.filter((item) => item.status === "stalled").length;
-  const awarded = data.filter((item) => item.stage === "Awarded").length;
-  return {
-    capturedAt: new Date().toISOString(),
-    totalApplications: total,
-    activeApplications: active,
-    stalledApplications: stalled,
-    conversionRate: total ? awarded / total : 0,
-    source: "fallback",
-    note
-  };
-};
-
-const renderLiveSnapshot = (snapshot) => {
-  if (!liveSnapshot) {
+const renderLiveSnapshot = (payload) => {
+  if (!liveSnapshot || !payload) {
     return;
   }
 
-  const source = snapshot.source || "local";
-  const isFallback = source !== "database";
-  const sourceLabel = isFallback ? "Fallback" : "Database";
+  const meta = payload.meta || {};
+  const source = payload.source || "sample";
+  const sourceLabel =
+    source === "database"
+      ? "Database"
+      : source === "database-empty"
+      ? "Database (Empty)"
+      : source === "fallback"
+      ? "Fallback"
+      : "Sample";
+  const pillClass = source === "database" ? "sync-pill" : "sync-pill warn";
+  const cohorts = meta.cohorts && meta.cohorts.length ? meta.cohorts.join(", ") : "None";
 
   liveSnapshot.innerHTML = `
     <div class="sync-card">
-      <span class="label">Captured</span>
-      <strong>${formatDateTime(snapshot.capturedAt)}</strong>
-      <span class="sync-pill ${isFallback ? "warn" : ""}">${sourceLabel}</span>
+      <span class="label">Source</span>
+      <strong>${sourceLabel}</strong>
+      <span class="${pillClass}">${source}</span>
     </div>
     <div class="sync-card">
-      <span class="label">Total Apps</span>
-      <strong>${snapshot.totalApplications}</strong>
-      <span class="label">Active: ${snapshot.activeApplications}</span>
+      <span class="label">Records</span>
+      <strong>${meta.dataRowCount ?? 0}</strong>
+      <span>${meta.dbRowCount ? `${meta.dbRowCount} in DB` : "No DB rows"}</span>
     </div>
     <div class="sync-card">
-      <span class="label">Stalled</span>
-      <strong>${snapshot.stalledApplications}</strong>
-      <span class="label">Conversion</span>
-      <strong>${formatPercent(snapshot.conversionRate)}</strong>
+      <span class="label">Cohorts</span>
+      <strong>${meta.cohortCount ?? 0}</strong>
+      <span>${cohorts}</span>
+    </div>
+    <div class="sync-card">
+      <span class="label">Last refresh</span>
+      <strong>${formatDateTime(meta.refreshedAt)}</strong>
+      <span>Data updated ${formatDateTime(meta.lastDataUpdate)}</span>
     </div>
   `;
 
-  liveSnapshotNotes.textContent =
-    snapshot.note || "Snapshot pulled from the production pipeline for leadership briefings.";
-};
-
-const loadLiveSnapshot = async () => {
-  if (!liveSnapshot) {
-    return;
-  }
-
-  liveSnapshotNotes.textContent = "Loading live snapshot...";
-  try {
-    const response = await fetch("/api/funnel-snapshot", { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error("Snapshot unavailable");
-    }
-    const payload = await response.json();
-    renderLiveSnapshot(payload);
-  } catch (error) {
-    renderLiveSnapshot(
-      buildFallbackSnapshot("Live sync unavailable. Showing local sample totals for context.")
-    );
+  if (liveSnapshotNotes) {
+    liveSnapshotNotes.textContent = payload.note || "";
   }
 };
 
@@ -1146,6 +1235,39 @@ const exportData = (items) => {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+};
+
+const loadRemoteData = async () => {
+  try {
+    const response = await fetch("/api/applications");
+    if (!response.ok) throw new Error("Fetch failed");
+    const payload = await response.json();
+    if (payload && Array.isArray(payload.data)) {
+      data = payload.data;
+      const current = cohortSelect.value;
+      buildSelectOptions();
+      if (current && data.some((item) => item.cohort === current)) {
+        cohortSelect.value = current;
+      } else if (data.length) {
+        cohortSelect.value = data[0].cohort;
+      }
+      render();
+    }
+    renderLiveSnapshot(payload);
+  } catch (error) {
+    renderLiveSnapshot({
+      source: "offline",
+      note: "Live sync unavailable. Using cached sample data.",
+      meta: {
+        refreshedAt: new Date().toISOString(),
+        dataRowCount: data.length,
+        cohortCount: unique(data.map((item) => item.cohort)).length,
+        cohorts: unique(data.map((item) => item.cohort)),
+        dbRowCount: 0,
+        lastDataUpdate: null
+      }
+    });
+  }
 };
 
 const render = () => {
@@ -1168,9 +1290,14 @@ const render = () => {
 };
 
 buildSelectOptions();
-cohortSelect.value = "Spring 2026";
+if (data.some((item) => item.cohort === "Spring 2026")) {
+  cohortSelect.value = "Spring 2026";
+} else if (data.length) {
+  cohortSelect.value = data[0].cohort;
+}
 render();
-loadLiveSnapshot();
+loadLatestBrief();
+loadRemoteData();
 
 [cohortSelect, reviewerFilter, statusFilter, searchInput].forEach((control) => {
   control.addEventListener("input", render);
