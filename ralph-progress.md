@@ -30,7 +30,7 @@
 - Added a reviewer risk radar panel with load, SLA exposure, and risk scoring.
 - Added an escalation playbook to prompt workload shifts and breach triage.
 
-## Iteration 8
+## Iteration 22
 - Added a brief pipeline API backed by Postgres and connected the weekly brief generator to persist summaries.
 - Added brief status messaging for latest saved drafts with pipeline health cues.
 - Attempted production deploy; Vercel daily deployment limit blocked release (retry later).
