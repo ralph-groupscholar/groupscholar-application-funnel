@@ -31,9 +31,8 @@
 - Added an escalation playbook to prompt workload shifts and breach triage.
 
 ## Iteration 22
-- Added a brief pipeline API backed by Postgres and connected the weekly brief generator to persist summaries.
-- Added brief status messaging for latest saved drafts with pipeline health cues.
-- Attempted production deploy; Vercel daily deployment limit blocked release (retry later).
+- Validated the brief pipeline wiring and set the production database environment variable in Vercel.
+- Attempted a production deploy; Vercel daily deployment limit blocked release (retry later).
 
 ## Iteration 21
 - Added a live data sync panel that pulls the latest funnel snapshot and shows capture time plus totals.
