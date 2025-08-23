@@ -43,3 +43,7 @@
 - Added Postgres-backed serverless endpoints for live application data and brief persistence with schema bootstrap.
 - Wired the live sync panel and dashboard dataset to refresh from the production data store with safe fallbacks.
 - Updated documentation and tooling metadata for the new database configuration.
+
+## Iteration 65
+- Fixed duplicate live snapshot DOM bindings in the dashboard script.
+- Added a manual refresh control for the live data sync panel with loading state.

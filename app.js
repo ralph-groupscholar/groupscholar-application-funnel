@@ -167,8 +167,7 @@ const briefStatus = document.getElementById("briefStatus");
 const activeCohort = document.getElementById("activeCohort");
 const totalApplications = document.getElementById("totalApplications");
 const overallConversion = document.getElementById("overallConversion");
-const liveSnapshot = document.getElementById("liveSnapshot");
-const liveSnapshotNotes = document.getElementById("liveSnapshotNotes");
+const refreshLiveData = document.getElementById("refreshLiveData");
 
 const unique = (items) => Array.from(new Set(items)).sort();
 const today = new Date();
@@ -1058,6 +1057,14 @@ const buildReviewerLines = (items) => {
     .join("\n");
 };
 
+const setLiveRefreshState = (isRefreshing) => {
+  if (!refreshLiveData) {
+    return;
+  }
+  refreshLiveData.disabled = isRefreshing;
+  refreshLiveData.textContent = isRefreshing ? "Refreshing..." : "Refresh snapshot";
+};
+
 const formatTimestamp = (value) => {
   if (!value) {
     return "";
@@ -1219,6 +1226,15 @@ const renderLiveSnapshot = (payload) => {
   }
 };
 
+const refreshLiveSnapshot = async () => {
+  setLiveRefreshState(true);
+  try {
+    await loadRemoteData();
+  } finally {
+    setLiveRefreshState(false);
+  }
+};
+
 const exportData = (items) => {
   const payload = {
     generatedAt: new Date().toISOString(),
@@ -1297,7 +1313,7 @@ if (data.some((item) => item.cohort === "Spring 2026")) {
 }
 render();
 loadLatestBrief();
-loadRemoteData();
+refreshLiveSnapshot();
 
 [cohortSelect, reviewerFilter, statusFilter, searchInput].forEach((control) => {
   control.addEventListener("input", render);
@@ -1306,3 +1322,7 @@ loadRemoteData();
 exportJson.addEventListener("click", () => exportData(filterData()));
 
 generateBrief.addEventListener("click", () => renderBrief(filterData()));
+
+if (refreshLiveData) {
+  refreshLiveData.addEventListener("click", refreshLiveSnapshot);
+}
