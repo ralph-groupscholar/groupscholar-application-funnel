@@ -1,4 +1,4 @@
-const { Client } = require("pg");
+const { getPool } = require("./_db");
 
 const fallbackSnapshot = () => ({
   capturedAt: new Date().toISOString(),
@@ -25,63 +25,87 @@ const ensureSchema = async (client) => {
   `);
 };
 
+const seedSnapshotIfEmpty = async (client) => {
+  const countResult = await client.query(
+    "SELECT COUNT(*)::int AS count FROM groupscholar_application_funnel.funnel_snapshots;"
+  );
+  if (countResult.rows[0].count > 0) {
+    return false;
+  }
+
+  const seed = fallbackSnapshot();
+  await client.query(
+    `
+    INSERT INTO groupscholar_application_funnel.funnel_snapshots
+      (captured_at, total_applications, active_applications, stalled_applications, conversion_rate, notes)
+    VALUES
+      ($1, $2, $3, $4, $5, $6);
+    `,
+    [
+      seed.capturedAt,
+      seed.totalApplications,
+      seed.activeApplications,
+      seed.stalledApplications,
+      seed.conversionRate,
+      seed.note
+    ]
+  );
+  return true;
+};
+
 module.exports = async (req, res) => {
   if (req.method !== "GET") {
     res.status(405).json({ error: "Method not allowed" });
     return;
   }
 
-  const { PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE } = process.env;
-  if (!PGHOST || !PGPORT || !PGUSER || !PGPASSWORD || !PGDATABASE) {
+  res.setHeader("Content-Type", "application/json");
+
+  const pool = getPool();
+  if (!pool) {
     res.status(200).json(fallbackSnapshot());
     return;
   }
 
-  const client = new Client({
-    host: PGHOST,
-    port: Number(PGPORT),
-    user: PGUSER,
-    password: PGPASSWORD,
-    database: PGDATABASE,
-    ssl: { rejectUnauthorized: false }
-  });
-
   try {
-    await client.connect();
-    await ensureSchema(client);
+    const client = await pool.connect();
+    try {
+      await ensureSchema(client);
+      await seedSnapshotIfEmpty(client);
 
-    const result = await client.query(`
-      SELECT captured_at, total_applications, active_applications, stalled_applications, conversion_rate, notes
-      FROM groupscholar_application_funnel.funnel_snapshots
-      ORDER BY captured_at DESC
-      LIMIT 1
-    `);
+      const result = await client.query(`
+        SELECT captured_at, total_applications, active_applications, stalled_applications, conversion_rate, notes
+        FROM groupscholar_application_funnel.funnel_snapshots
+        ORDER BY captured_at DESC
+        LIMIT 1
+      `);
 
-    if (result.rows.length === 0) {
+      if (result.rows.length === 0) {
+        res.status(200).json({
+          ...fallbackSnapshot(),
+          source: "database",
+          note: "No snapshots stored yet. Seed the table to activate live sync."
+        });
+        return;
+      }
+
+      const row = result.rows[0];
       res.status(200).json({
-        ...fallbackSnapshot(),
+        capturedAt: row.captured_at,
+        totalApplications: row.total_applications,
+        activeApplications: row.active_applications,
+        stalledApplications: row.stalled_applications,
+        conversionRate: Number(row.conversion_rate),
         source: "database",
-        note: "No snapshots stored yet. Seed the table to activate live sync."
+        note: row.notes || "Latest persisted snapshot from the funnel ops pipeline."
       });
-      return;
+    } finally {
+      client.release();
     }
-
-    const row = result.rows[0];
-    res.status(200).json({
-      capturedAt: row.captured_at,
-      totalApplications: row.total_applications,
-      activeApplications: row.active_applications,
-      stalledApplications: row.stalled_applications,
-      conversionRate: Number(row.conversion_rate),
-      source: "database",
-      note: row.notes || "Latest persisted snapshot from the funnel ops pipeline."
-    });
   } catch (error) {
     res.status(200).json({
       ...fallbackSnapshot(),
       note: "Database connection failed. Live snapshot unavailable."
     });
-  } finally {
-    await client.end();
   }
 };

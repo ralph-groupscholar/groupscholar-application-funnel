@@ -129,6 +129,72 @@ const sampleData = [
   }
 ];
 
+const sampleSnapshotHistory = [
+  {
+    capturedAt: "2026-01-29T14:00:00Z",
+    totalApplications: 47,
+    activeApplications: 18,
+    stalledApplications: 5,
+    conversionRate: 0.55,
+    notes: "Week opening pulse."
+  },
+  {
+    capturedAt: "2026-02-01T14:00:00Z",
+    totalApplications: 49,
+    activeApplications: 19,
+    stalledApplications: 5,
+    conversionRate: 0.58,
+    notes: "Eligibility backlog easing."
+  },
+  {
+    capturedAt: "2026-02-03T14:00:00Z",
+    totalApplications: 50,
+    activeApplications: 20,
+    stalledApplications: 7,
+    conversionRate: 0.598,
+    notes: "Interview throughput improving."
+  },
+  {
+    capturedAt: "2026-02-06T14:00:00Z",
+    totalApplications: 52,
+    activeApplications: 21,
+    stalledApplications: 6,
+    conversionRate: 0.6125,
+    notes: "Latest Monday checkpoint."
+  }
+];
+
+const sampleBriefArchive = [
+  {
+    cohort: "Spring 2026",
+    summary:
+      "Review throughput steady but interview stage requires nudges. Prioritize stalled eligibility files and rebalance reviewer load for final decisions.",
+    generated_at: "2026-02-06T15:00:00Z",
+    metrics: {
+      active: 18,
+      stalled: 4,
+      inReview: 9,
+      inInterview: 5,
+      inFinal: 3,
+      awarded: 2
+    }
+  },
+  {
+    cohort: "Winter 2025",
+    summary:
+      "Wrap-up cycle nearing completion. Focus on final documentation requests and confirm award notifications to close remaining files.",
+    generated_at: "2025-12-10T15:00:00Z",
+    metrics: {
+      active: 6,
+      stalled: 2,
+      inReview: 2,
+      inInterview: 1,
+      inFinal: 2,
+      awarded: 7
+    }
+  }
+];
+
 let data = [...sampleData];
 
 const cohortSelect = document.getElementById("cohortSelect");
@@ -154,16 +220,27 @@ const reviewerRiskMetrics = document.getElementById("reviewerRiskMetrics");
 const reviewerRiskList = document.getElementById("reviewerRiskList");
 const reviewerPlaybook = document.getElementById("reviewerPlaybook");
 const rosterTable = document.getElementById("rosterTable");
+const cohortComparison = document.getElementById("cohortComparison");
+const cohortComparisonNote = document.getElementById("cohortComparisonNote");
 const cohortSnapshot = document.getElementById("cohortSnapshot");
 const capacityForecast = document.getElementById("capacityForecast");
 const rebalanceList = document.getElementById("rebalanceList");
 const liveSnapshot = document.getElementById("liveSnapshot");
 const liveSnapshotNotes = document.getElementById("liveSnapshotNotes");
+const snapshotTrend = document.getElementById("snapshotTrend");
+const snapshotTrendNote = document.getElementById("snapshotTrendNote");
+const captureSnapshot = document.getElementById("captureSnapshot");
+const briefArchive = document.getElementById("briefArchive");
+const briefArchiveNote = document.getElementById("briefArchiveNote");
+const refreshBriefArchive = document.getElementById("refreshBriefArchive");
 const outreachMetrics = document.getElementById("outreachMetrics");
 const outreachList = document.getElementById("outreachList");
 const briefPanel = document.getElementById("briefPanel");
 const briefOutput = document.getElementById("briefOutput");
 const briefStatus = document.getElementById("briefStatus");
+const refreshBriefArchive = document.getElementById("refreshBriefArchive");
+const briefArchive = document.getElementById("briefArchive");
+const briefArchiveNote = document.getElementById("briefArchiveNote");
 const activeCohort = document.getElementById("activeCohort");
 const totalApplications = document.getElementById("totalApplications");
 const overallConversion = document.getElementById("overallConversion");
@@ -182,6 +259,7 @@ const stageEffortHours = {
   Final: 2,
   Awarded: 0.5
 };
+const briefArchiveMap = new Map();
 const reviewerDailyCapacity = 4;
 const stagePriorityWeight = {
   Submitted: 0.6,
@@ -1093,6 +1171,75 @@ const setBriefStatus = (message, tone) => {
   briefStatus.dataset.tone = tone;
 };
 
+const setBriefArchiveNote = (message) => {
+  if (!briefArchiveNote) {
+    return;
+  }
+  briefArchiveNote.textContent = message || "";
+};
+
+const renderBriefArchive = (briefs) => {
+  if (!briefArchive) {
+    return;
+  }
+
+  const list = Array.isArray(briefs) ? briefs : [];
+  briefArchiveMap.clear();
+  setBriefArchiveNote(list.length ? "Showing the latest saved briefs." : "No saved briefs yet.");
+
+  if (list.length === 0) {
+    briefArchive.innerHTML =
+      "<p class=\"brief-empty\">No brief history yet. Generate a brief to seed the archive.</p>";
+    return;
+  }
+
+  briefArchive.innerHTML = list
+    .map((brief, index) => {
+      const id = String(brief.id ?? `brief-${index}`);
+      briefArchiveMap.set(id, brief);
+      const createdLabel = formatDateTime(brief.created_at || brief.generated_at);
+      const metrics = brief.metrics || {};
+      const summary = brief.summary || "No summary available.";
+      return `
+        <div class="brief-card">
+          <div class="brief-meta">
+            <span>${brief.cohort || "Unknown cohort"}</span>
+            <span>${createdLabel}</span>
+          </div>
+          <strong>Weekly Brief Draft</strong>
+          <p>${summary.split("\n").slice(0, 3).join(" ")}</p>
+          <div class="brief-metrics">
+            <div class="brief-metric"><span>Active</span><strong>${metrics.active ?? metrics.total ?? "--"}</strong></div>
+            <div class="brief-metric"><span>Stalled</span><strong>${metrics.stalled ?? "--"}</strong></div>
+            <div class="brief-metric"><span>Backlog</span><strong>${metrics.backlog ?? "--"}</strong></div>
+          </div>
+          <button class="brief-action" data-brief-id="${id}">Open brief</button>
+        </div>
+      `;
+    })
+    .join("");
+};
+
+const loadBriefArchive = async () => {
+  if (!briefArchive) {
+    return;
+  }
+
+  setBriefArchiveNote("Loading brief history...");
+  try {
+    const response = await fetch("/api/briefs", { method: "GET" });
+    if (!response.ok) {
+      throw new Error("Brief archive fetch failed");
+    }
+
+    const result = await response.json();
+    renderBriefArchive(result?.briefs || []);
+  } catch (error) {
+    renderBriefArchive([]);
+    setBriefArchiveNote("Brief archive unavailable. Showing local-only status.");
+  }
+};
+
 const saveBrief = async (items, summary) => {
   setBriefStatus("Saving brief...", "pending");
 
@@ -1133,6 +1280,7 @@ const saveBrief = async (items, summary) => {
     const result = await response.json();
     const savedAt = formatTimestamp(result?.brief?.created_at || result?.brief?.generated_at);
     setBriefStatus(savedAt ? `Saved to pipeline on ${savedAt}` : "Saved to pipeline", "success");
+    loadBriefArchive();
   } catch (error) {
     setBriefStatus("Brief saved locally only (pipeline unavailable)", "warning");
   }
@@ -1178,6 +1326,287 @@ const formatDateTime = (value) => {
     hour: "numeric",
     minute: "2-digit"
   });
+};
+
+const formatDelta = (value, suffix = "") => {
+  if (value === 0) {
+    return { label: `0${suffix}`, className: "trend-delta flat" };
+  }
+  if (value > 0) {
+    return { label: `+${value}${suffix}`, className: "trend-delta" };
+  }
+  return { label: `${value}${suffix}`, className: "trend-delta down" };
+};
+
+const escapeHtml = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const buildBriefMetrics = (metrics = {}) => {
+  const entries = [
+    { label: "Total", value: metrics.total },
+    { label: "Active", value: metrics.active },
+    { label: "Stalled", value: metrics.stalled },
+    { label: "Review backlog", value: metrics.backlog ?? metrics.inReview },
+    { label: "Interview", value: metrics.inInterview },
+    { label: "Final", value: metrics.inFinal },
+    { label: "Awarded", value: metrics.awarded },
+    { label: "SLA warnings", value: metrics.slaWarnings },
+    { label: "SLA breaches", value: metrics.slaBreaches }
+  ];
+
+  return entries.filter((entry) => entry.value !== undefined && entry.value !== null);
+};
+
+const renderBriefArchive = ({ briefs = [], note = "" } = {}) => {
+  if (!briefArchive) {
+    return;
+  }
+
+  if (briefArchiveNote) {
+    briefArchiveNote.textContent = note || "";
+  }
+
+  if (!Array.isArray(briefs) || briefs.length === 0) {
+    briefArchive.innerHTML =
+      "<p class=\"brief-empty\">No brief drafts saved yet. Generate a brief to start the archive.</p>";
+    return;
+  }
+
+  briefArchive.innerHTML = briefs
+    .map((brief) => {
+      const metrics = buildBriefMetrics(brief.metrics || {});
+      const generatedAt = formatDateTime(brief.created_at || brief.generated_at);
+      const summary = escapeHtml(brief.summary || "Summary unavailable.");
+      const cohort = escapeHtml(brief.cohort || "Unknown cohort");
+      const metricMarkup = metrics.length
+        ? metrics
+            .map(
+              (metric) => `
+              <div class="brief-metric">
+                <span>${escapeHtml(metric.label)}</span>
+                <strong>${escapeHtml(metric.value)}</strong>
+              </div>
+            `
+            )
+            .join("")
+        : "<div class=\"brief-empty\">No metrics recorded for this brief.</div>";
+
+      return `
+        <div class="brief-card" data-summary="${summary}">
+          <div class="brief-meta">
+            <span>${cohort}</span>
+            <span>${generatedAt}</span>
+          </div>
+          <strong>Weekly funnel brief</strong>
+          <p>${summary}</p>
+          <div class="brief-metrics">${metricMarkup}</div>
+          <button class="brief-action" data-copy-summary="true">Copy summary</button>
+        </div>
+      `;
+    })
+    .join("");
+};
+
+const loadBriefArchive = async () => {
+  if (!briefArchive) {
+    return;
+  }
+
+  if (briefArchiveNote) {
+    briefArchiveNote.textContent = "Loading brief archive...";
+  }
+
+  try {
+    const response = await fetch("/api/briefs", { method: "GET" });
+    if (!response.ok) {
+      throw new Error("Brief archive fetch failed");
+    }
+    const result = await response.json();
+    renderBriefArchive({
+      briefs: result?.briefs || [],
+      note: result?.briefs?.length ? "Latest saved briefs from the pipeline." : "No briefs saved yet."
+    });
+  } catch (error) {
+    renderBriefArchive({
+      briefs: sampleBriefArchive,
+      note: "Pipeline offline. Showing local brief samples."
+    });
+  }
+};
+
+const handleBriefArchiveClick = (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  if (!target.matches("[data-copy-summary=\"true\"]")) {
+    return;
+  }
+
+  const card = target.closest(".brief-card");
+  if (!card) {
+    return;
+  }
+
+  const summary = card.dataset.summary;
+  if (!summary) {
+    return;
+  }
+
+  navigator.clipboard?.writeText(summary).then(
+    () => {
+      target.textContent = "Copied";
+      setTimeout(() => {
+        target.textContent = "Copy summary";
+      }, 1500);
+    },
+    () => {
+      target.textContent = "Copy failed";
+      setTimeout(() => {
+        target.textContent = "Copy summary";
+      }, 1500);
+    }
+  );
+};
+
+const setCaptureState = (isLoading) => {
+  if (!captureSnapshot) {
+    return;
+  }
+  captureSnapshot.disabled = isLoading;
+  captureSnapshot.textContent = isLoading ? "Capturing..." : "Capture snapshot";
+};
+
+const buildSnapshotPayload = (items) => {
+  const total = items.length;
+  const active = items.filter((item) => item.status === "active").length;
+  const stalled = items.filter((item) => item.status === "stalled").length;
+  const completed = items.filter((item) => item.status === "completed").length;
+  const conversionRate = total ? Number((completed / total).toFixed(4)) : 0;
+
+  return {
+    totalApplications: total,
+    activeApplications: active,
+    stalledApplications: stalled,
+    conversionRate,
+    notes: `Captured from ${cohortSelect.value} dashboard.`
+  };
+};
+
+const renderSnapshotTrend = (payload) => {
+  if (!snapshotTrend) {
+    return;
+  }
+
+  const history = payload?.history ?? [];
+  if (snapshotTrendNote) {
+    snapshotTrendNote.textContent = payload?.note || "";
+  }
+
+  if (!Array.isArray(history) || history.length === 0) {
+    snapshotTrend.innerHTML =
+      "<p class=\"trend-empty\">No snapshot history yet. Seed the funnel snapshots to activate trends.</p>";
+    return;
+  }
+
+  snapshotTrend.innerHTML = history
+    .map((entry, index) => {
+      const prev = index > 0 ? history[index - 1] : null;
+      const deltaTotal = prev ? entry.totalApplications - prev.totalApplications : 0;
+      const deltaConversion = prev
+        ? Number((entry.conversionRate - prev.conversionRate).toFixed(3))
+        : 0;
+      const totalDelta = formatDelta(deltaTotal);
+      const conversionDelta = formatDelta(Number((deltaConversion * 100).toFixed(1)), "%");
+      const conversionPercent = Number((entry.conversionRate * 100).toFixed(1));
+      const pill = index === history.length - 1 ? "Latest" : `Pulse ${index + 1}`;
+
+      return `
+        <div class="trend-card">
+          <div class="trend-meta">
+            <span class="trend-pill">${pill}</span>
+            <strong>${formatDateTime(entry.capturedAt)}</strong>
+            <span>${entry.notes || "Snapshot capture"}</span>
+          </div>
+          <div class="trend-stat">
+            <span>Total applications</span>
+            <strong>${entry.totalApplications}</strong>
+            <span class="${totalDelta.className}">${totalDelta.label}</span>
+          </div>
+          <div class="trend-stat">
+            <span>Active applications</span>
+            <strong>${entry.activeApplications}</strong>
+            <span>Stalled: ${entry.stalledApplications}</span>
+          </div>
+          <div class="trend-stat">
+            <span>Conversion rate</span>
+            <strong>${conversionPercent}%</strong>
+            <span class="${conversionDelta.className}">${conversionDelta.label}</span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+};
+
+const captureSnapshotToPipeline = async () => {
+  if (!captureSnapshot) {
+    return;
+  }
+
+  setCaptureState(true);
+  if (snapshotTrendNote) {
+    snapshotTrendNote.textContent = "Capturing snapshot to pipeline...";
+  }
+
+  try {
+    const payload = buildSnapshotPayload(filterData());
+    const response = await fetch("/api/funnel-history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error("Snapshot capture failed");
+    }
+
+    await loadSnapshotHistory();
+  } catch (error) {
+    if (snapshotTrendNote) {
+      snapshotTrendNote.textContent =
+        "Snapshot capture failed. Keep monitoring locally and retry when the pipeline is online.";
+    }
+  } finally {
+    setCaptureState(false);
+  }
+};
+
+const loadSnapshotHistory = async () => {
+  if (!snapshotTrend) {
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/funnel-history");
+    if (!response.ok) {
+      throw new Error("History fetch failed");
+    }
+    const payload = await response.json();
+    renderSnapshotTrend(payload);
+  } catch (error) {
+    renderSnapshotTrend({
+      source: "fallback",
+      history: sampleSnapshotHistory,
+      note: "Using local snapshot history while pipeline is offline."
+    });
+  }
 };
 
 const renderLiveSnapshot = (payload) => {
@@ -1229,7 +1658,7 @@ const renderLiveSnapshot = (payload) => {
 const refreshLiveSnapshot = async () => {
   setLiveRefreshState(true);
   try {
-    await loadRemoteData();
+    await Promise.all([loadRemoteData(), loadSnapshotHistory()]);
   } finally {
     setLiveRefreshState(false);
   }
@@ -1313,6 +1742,7 @@ if (data.some((item) => item.cohort === "Spring 2026")) {
 }
 render();
 loadLatestBrief();
+loadBriefArchive();
 refreshLiveSnapshot();
 
 [cohortSelect, reviewerFilter, statusFilter, searchInput].forEach((control) => {
@@ -1325,4 +1755,46 @@ generateBrief.addEventListener("click", () => renderBrief(filterData()));
 
 if (refreshLiveData) {
   refreshLiveData.addEventListener("click", refreshLiveSnapshot);
+}
+
+if (captureSnapshot) {
+  captureSnapshot.addEventListener("click", captureSnapshotToPipeline);
+}
+
+if (refreshBriefArchive) {
+  refreshBriefArchive.addEventListener("click", loadBriefArchive);
+}
+
+if (briefArchive) {
+  briefArchive.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-brief-id]");
+    if (!target) {
+      return;
+    }
+    const brief = briefArchiveMap.get(target.dataset.briefId);
+    if (!brief) {
+      return;
+    }
+    if (brief.cohort && cohortSelect) {
+      const hasOption = Array.from(cohortSelect.options).some(
+        (option) => option.value === brief.cohort
+      );
+      if (hasOption) {
+        cohortSelect.value = brief.cohort;
+        render();
+      }
+    }
+    if (briefOutput) {
+      briefOutput.textContent = brief.summary || "No summary available.";
+    }
+    if (briefPanel) {
+      briefPanel.hidden = false;
+      briefPanel.scrollIntoView({ behavior: "smooth" });
+    }
+    const savedAt = formatTimestamp(brief.created_at || brief.generated_at);
+    setBriefStatus(
+      savedAt ? `Loaded archived brief from ${savedAt}` : "Loaded archived brief",
+      "info"
+    );
+  });
 }

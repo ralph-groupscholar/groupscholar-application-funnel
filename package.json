@@ -5,5 +5,8 @@
   "type": "commonjs",
   "dependencies": {
     "pg": "^8.11.5"
+  },
+  "scripts": {
+    "seed": "node scripts/seed-db.js"
   }
 }

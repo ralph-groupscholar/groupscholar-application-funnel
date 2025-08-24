@@ -141,6 +141,40 @@ const ensureSchema = async (client) => {
   );
 };
 
+const seedApplicationsIfEmpty = async (client) => {
+  const countResult = await client.query(
+    "SELECT COUNT(*)::int AS count FROM application_funnel.applications;"
+  );
+  if (countResult.rows[0].count > 0) {
+    return false;
+  }
+
+  for (const app of sampleData) {
+    await client.query(
+      `
+      INSERT INTO application_funnel.applications
+        (id, name, cohort, stage, reviewer, status, submitted_at, last_update, turnaround_days)
+      VALUES
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (id) DO NOTHING;
+      `,
+      [
+        app.id,
+        app.name,
+        app.cohort,
+        app.stage,
+        app.reviewer,
+        app.status,
+        app.submittedAt,
+        app.lastUpdate,
+        app.turnaroundDays
+      ]
+    );
+  }
+
+  return true;
+};
+
 const mapRow = (row) => ({
   id: row.id,
   name: row.name,
@@ -188,6 +222,7 @@ module.exports = async (req, res) => {
     const client = await poolInstance.connect();
     try {
       await ensureSchema(client);
+      await seedApplicationsIfEmpty(client);
       const dataResult = await client.query(
         "SELECT id, name, cohort, stage, reviewer, status, submitted_at, last_update, turnaround_days FROM application_funnel.applications ORDER BY last_update DESC;"
       );

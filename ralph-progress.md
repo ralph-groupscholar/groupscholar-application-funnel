@@ -48,3 +48,11 @@
 - Fixed duplicate live snapshot DOM bindings in the dashboard script.
 - Added a manual refresh control for the live data sync panel with loading state.
 - Attempted a production deploy; Vercel daily deployment limit blocked release (retry later).
+
+## Iteration 105
+- Added automatic seeding for funnel snapshots, briefs, and application records when the database is empty.
+- Ensured live endpoints bootstrap the production schema with usable baseline data for the dashboard trend panels.
+
+## Iteration 106
+- Added a brief archive panel that surfaces saved weekly briefs with metrics and quick-open actions.
+- Wired the dashboard to refresh the brief archive on load and after saving new briefs.

@@ -1,5 +1,36 @@
 const { getPool } = require("./_db");
 
+const sampleBriefs = [
+  {
+    cohort: "Spring 2026",
+    summary:
+      "Review throughput steady but interview stage requires nudges. Prioritize stalled eligibility files and rebalance reviewer load for final decisions.",
+    generatedAt: "2026-02-06T15:00:00Z",
+    metrics: {
+      active: 18,
+      stalled: 4,
+      inReview: 9,
+      inInterview: 5,
+      inFinal: 3,
+      awarded: 2
+    }
+  },
+  {
+    cohort: "Winter 2025",
+    summary:
+      "Wrap-up cycle nearing completion. Focus on final documentation requests and confirm award notifications to close remaining files.",
+    generatedAt: "2025-12-10T15:00:00Z",
+    metrics: {
+      active: 6,
+      stalled: 2,
+      inReview: 2,
+      inInterview: 1,
+      inFinal: 2,
+      awarded: 7
+    }
+  }
+];
+
 const ensureSchema = async (client) => {
   await client.query("CREATE SCHEMA IF NOT EXISTS application_funnel;");
   await client.query(`
@@ -15,6 +46,29 @@ const ensureSchema = async (client) => {
   await client.query(
     "CREATE INDEX IF NOT EXISTS application_funnel_briefs_created_idx ON application_funnel.briefs (created_at DESC);"
   );
+};
+
+const seedBriefsIfEmpty = async (client) => {
+  const countResult = await client.query(
+    "SELECT COUNT(*)::int AS count FROM application_funnel.briefs;"
+  );
+  if (countResult.rows[0].count > 0) {
+    return false;
+  }
+
+  for (const brief of sampleBriefs) {
+    await client.query(
+      `
+      INSERT INTO application_funnel.briefs
+        (cohort, summary, generated_at, metrics)
+      VALUES
+        ($1, $2, $3, $4);
+      `,
+      [brief.cohort, brief.summary, brief.generatedAt, brief.metrics]
+    );
+  }
+
+  return true;
 };
 
 const parseBody = (req) => {
@@ -43,6 +97,7 @@ module.exports = async (req, res) => {
       const client = await pool.connect();
       try {
         await ensureSchema(client);
+        await seedBriefsIfEmpty(client);
         const result = await client.query(
           "SELECT id, cohort, summary, generated_at, metrics, created_at FROM application_funnel.briefs ORDER BY created_at DESC LIMIT 5;"
         );

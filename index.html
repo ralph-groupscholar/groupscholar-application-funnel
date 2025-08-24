@@ -108,6 +108,30 @@
 
       <div class="panel">
         <div class="panel-header">
+          <h2>Snapshot Trend</h2>
+          <p>Recent pipeline pulses from stored funnel snapshots.</p>
+        </div>
+        <div class="panel-tools">
+          <button id="captureSnapshot" class="panel-action">Capture snapshot</button>
+        </div>
+        <div id="snapshotTrend" class="trend-list"></div>
+        <div id="snapshotTrendNote" class="sync-notes"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Brief Archive</h2>
+          <p>Recently saved brief drafts from the data pipeline.</p>
+        </div>
+        <div class="panel-tools">
+          <button id="refreshBriefArchive" class="panel-action">Refresh briefs</button>
+        </div>
+        <div id="briefArchive" class="brief-archive"></div>
+        <div id="briefArchiveNote" class="sync-notes"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
           <h2>Operational Alerts</h2>
           <p>Automatic flags for stalled cohorts and backlog.</p>
         </div>
@@ -163,6 +187,15 @@
           <p>Interview/final files needing movement.</p>
         </div>
         <div id="decisionQueue" class="decision-list"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Cohort Comparison</h2>
+          <p>Delta versus the prior cohort baseline.</p>
+        </div>
+        <div id="cohortComparison" class="comparison-grid"></div>
+        <div id="cohortComparisonNote" class="comparison-note"></div>
       </div>
 
       <div class="panel">

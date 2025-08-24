@@ -19,5 +19,6 @@ A local-first operational dashboard to track application flow, reviewer capacity
 - Deploy to Vercel to enable the live data and brief pipeline endpoints.
 
 ## Data
-- Set `GROUPSCHOLAR_DB_URL` in Vercel to enable `/api/applications` and `/api/briefs`.
+- Set `GROUPSCHOLAR_DB_URL` in Vercel to enable `/api/applications`, `/api/briefs`, and `/api/funnel-snapshot`.
+- Seed the production database once with `node scripts/seed-db.js` (uses `GROUPSCHOLAR_DB_URL`).
 - The live data panel shows sample data if the database is empty or unavailable.
