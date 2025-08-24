@@ -53,6 +53,11 @@
 - Added automatic seeding for funnel snapshots, briefs, and application records when the database is empty.
 - Ensured live endpoints bootstrap the production schema with usable baseline data for the dashboard trend panels.
 
+## Iteration 119
+- Added a cohort comparison panel that benchmarks current metrics against the prior cohort with delta cues.
+- Styled the new comparison grid and baseline note for quick scanning.
+
 ## Iteration 106
 - Added a brief archive panel that surfaces saved weekly briefs with metrics and quick-open actions.
 - Wired the dashboard to refresh the brief archive on load and after saving new briefs.
+- Attempted a production deploy; Vercel daily deployment limit blocked release (retry later).
