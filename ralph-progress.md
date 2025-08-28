@@ -61,3 +61,7 @@
 - Added a brief archive panel that surfaces saved weekly briefs with metrics and quick-open actions.
 - Wired the dashboard to refresh the brief archive on load and after saving new briefs.
 - Attempted a production deploy; Vercel daily deployment limit blocked release (retry later).
+
+## Iteration 103
+- Upgraded the brief archive with richer metrics, copy-to-clipboard actions, and a pipeline-offline fallback to local samples.
+- Improved archive rendering safety with HTML escaping and summary previews.

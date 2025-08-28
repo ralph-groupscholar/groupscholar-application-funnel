@@ -238,9 +238,6 @@ const outreachList = document.getElementById("outreachList");
 const briefPanel = document.getElementById("briefPanel");
 const briefOutput = document.getElementById("briefOutput");
 const briefStatus = document.getElementById("briefStatus");
-const refreshBriefArchive = document.getElementById("refreshBriefArchive");
-const briefArchive = document.getElementById("briefArchive");
-const briefArchiveNote = document.getElementById("briefArchiveNote");
 const activeCohort = document.getElementById("activeCohort");
 const totalApplications = document.getElementById("totalApplications");
 const overallConversion = document.getElementById("overallConversion");
@@ -1052,6 +1049,167 @@ const renderOutreachCadence = (items) => {
     : "<p>No outreach touchpoints due in the next week.</p>";
 };
 
+const cohortTermOrder = {
+  Winter: 1,
+  Spring: 2,
+  Summer: 3,
+  Fall: 4
+};
+
+const parseCohortKey = (label) => {
+  if (!label) {
+    return { year: 0, term: 0, label: "" };
+  }
+  const match = label.match(/([A-Za-z]+)\s+(\d{4})/);
+  if (!match) {
+    return { year: 0, term: 0, label };
+  }
+  const term = cohortTermOrder[match[1]] || 0;
+  const year = Number(match[2]) || 0;
+  return { year, term, label };
+};
+
+const sortCohorts = (cohorts) =>
+  cohorts.slice().sort((a, b) => {
+    const aKey = parseCohortKey(a);
+    const bKey = parseCohortKey(b);
+    if (aKey.year !== bKey.year) {
+      return aKey.year - bKey.year;
+    }
+    if (aKey.term !== bKey.term) {
+      return aKey.term - bKey.term;
+    }
+    return a.localeCompare(b);
+  });
+
+const buildCohortMetrics = (items) => {
+  const total = items.length;
+  const stalled = items.filter((item) => item.status === "stalled").length;
+  const awarded = items.filter((item) => item.stage === "Awarded").length;
+  const conversion = total ? awarded / total : 0;
+  const avgTurnaround = total
+    ? items.reduce((sum, item) => sum + item.turnaroundDays, 0) / total
+    : 0;
+  const slaBreaches = items.filter(
+    (item) => item.status !== "completed" && daysSince(item.lastUpdate) >= SLA_CRITICAL_DAYS
+  ).length;
+  const topStage = stages.reduce(
+    (max, stage) => {
+      const count = items.filter((item) => item.stage === stage).length;
+      return count > max.count ? { stage, count } : max;
+    },
+    { stage: stages[0], count: 0 }
+  );
+
+  return {
+    total,
+    stalled,
+    awarded,
+    conversion,
+    avgTurnaround,
+    slaBreaches,
+    topStage
+  };
+};
+
+const buildDeltaMeta = (current, baseline, higherIsBetter = true) => {
+  const delta = current - baseline;
+  if (delta === 0) {
+    return { label: "No change", className: "comparison-delta" };
+  }
+  const isPositive = delta > 0;
+  const isGood = higherIsBetter ? isPositive : !isPositive;
+  return {
+    label: `${isPositive ? "+" : ""}${delta}`,
+    className: `comparison-delta ${isGood ? "good" : "bad"}`
+  };
+};
+
+const renderCohortComparison = () => {
+  if (!cohortComparison) {
+    return;
+  }
+
+  const cohorts = sortCohorts(unique(data.map((item) => item.cohort)));
+  const currentCohort = cohortSelect.value;
+  const currentIndex = cohorts.indexOf(currentCohort);
+  const baselineCohort =
+    currentIndex > 0
+      ? cohorts[currentIndex - 1]
+      : cohorts.find((cohort) => cohort !== currentCohort);
+
+  if (!baselineCohort) {
+    cohortComparison.innerHTML =
+      "<p class=\"comparison-note\">Only one cohort available. Add a second cohort to unlock comparison trends.</p>";
+    if (cohortComparisonNote) {
+      cohortComparisonNote.textContent = "";
+    }
+    return;
+  }
+
+  const currentItems = data.filter((item) => item.cohort === currentCohort);
+  const baselineItems = data.filter((item) => item.cohort === baselineCohort);
+  const current = buildCohortMetrics(currentItems);
+  const baseline = buildCohortMetrics(baselineItems);
+
+  const cards = [
+    {
+      label: "Total applications",
+      value: current.total,
+      delta: buildDeltaMeta(current.total, baseline.total, true)
+    },
+    {
+      label: "Conversion rate",
+      value: `${(current.conversion * 100).toFixed(1)}%`,
+      delta: buildDeltaMeta(
+        Number((current.conversion * 100).toFixed(1)),
+        Number((baseline.conversion * 100).toFixed(1)),
+        true
+      )
+    },
+    {
+      label: "Awarded files",
+      value: current.awarded,
+      delta: buildDeltaMeta(current.awarded, baseline.awarded, true)
+    },
+    {
+      label: "Avg turnaround",
+      value: `${current.avgTurnaround.toFixed(1)} days`,
+      delta: buildDeltaMeta(
+        Number(current.avgTurnaround.toFixed(1)),
+        Number(baseline.avgTurnaround.toFixed(1)),
+        false
+      )
+    },
+    {
+      label: "Stalled files",
+      value: current.stalled,
+      delta: buildDeltaMeta(current.stalled, baseline.stalled, false)
+    },
+    {
+      label: "SLA breaches",
+      value: current.slaBreaches,
+      delta: buildDeltaMeta(current.slaBreaches, baseline.slaBreaches, false)
+    }
+  ];
+
+  cohortComparison.innerHTML = cards
+    .map(
+      (card) => `
+      <div class="comparison-card">
+        <span>${card.label}</span>
+        <strong>${card.value}</strong>
+        <div class="${card.delta.className}">${card.delta.label}</div>
+      </div>
+    `
+    )
+    .join("");
+
+  if (cohortComparisonNote) {
+    cohortComparisonNote.textContent = `Baseline: ${baselineCohort} • Top stage now: ${current.topStage.stage} (${current.topStage.count})`;
+  }
+};
+
 const renderSnapshot = (items) => {
   const stageHighlights = stages.map((stage) => {
     const count = items.filter((item) => item.stage === stage).length;
@@ -1178,6 +1336,30 @@ const setBriefArchiveNote = (message) => {
   briefArchiveNote.textContent = message || "";
 };
 
+const escapeHtml = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const buildBriefMetrics = (metrics = {}) => {
+  const entries = [
+    { label: "Total", value: metrics.total },
+    { label: "Active", value: metrics.active },
+    { label: "Stalled", value: metrics.stalled },
+    { label: "Review backlog", value: metrics.backlog ?? metrics.inReview },
+    { label: "Interview", value: metrics.inInterview },
+    { label: "Final", value: metrics.inFinal },
+    { label: "Awarded", value: metrics.awarded },
+    { label: "SLA warnings", value: metrics.slaWarnings },
+    { label: "SLA breaches", value: metrics.slaBreaches }
+  ];
+
+  return entries.filter((entry) => entry.value !== undefined && entry.value !== null);
+};
+
 const renderBriefArchive = (briefs) => {
   if (!briefArchive) {
     return;
@@ -1199,21 +1381,32 @@ const renderBriefArchive = (briefs) => {
       briefArchiveMap.set(id, brief);
       const createdLabel = formatDateTime(brief.created_at || brief.generated_at);
       const metrics = brief.metrics || {};
-      const summary = brief.summary || "No summary available.";
+      const summaryText = brief.summary || "No summary available.";
+      const summaryPreview = summaryText.split("\n").slice(0, 3).join(" ");
+      const metricEntries = buildBriefMetrics(metrics);
+      const metricsMarkup = metricEntries.length
+        ? metricEntries
+            .map(
+              (entry) => `
+              <div class="brief-metric">
+                <span>${escapeHtml(entry.label)}</span>
+                <strong>${escapeHtml(entry.value)}</strong>
+              </div>
+            `
+            )
+            .join("")
+        : "<div class=\"brief-empty\">No metrics recorded for this brief.</div>";
       return `
         <div class="brief-card">
           <div class="brief-meta">
-            <span>${brief.cohort || "Unknown cohort"}</span>
+            <span>${escapeHtml(brief.cohort || "Unknown cohort")}</span>
             <span>${createdLabel}</span>
           </div>
           <strong>Weekly Brief Draft</strong>
-          <p>${summary.split("\n").slice(0, 3).join(" ")}</p>
-          <div class="brief-metrics">
-            <div class="brief-metric"><span>Active</span><strong>${metrics.active ?? metrics.total ?? "--"}</strong></div>
-            <div class="brief-metric"><span>Stalled</span><strong>${metrics.stalled ?? "--"}</strong></div>
-            <div class="brief-metric"><span>Backlog</span><strong>${metrics.backlog ?? "--"}</strong></div>
-          </div>
+          <p>${escapeHtml(summaryPreview)}</p>
+          <div class="brief-metrics">${metricsMarkup}</div>
           <button class="brief-action" data-brief-id="${id}">Open brief</button>
+          <button class="brief-action" data-brief-copy="${id}">Copy summary</button>
         </div>
       `;
     })
@@ -1235,8 +1428,8 @@ const loadBriefArchive = async () => {
     const result = await response.json();
     renderBriefArchive(result?.briefs || []);
   } catch (error) {
-    renderBriefArchive([]);
-    setBriefArchiveNote("Brief archive unavailable. Showing local-only status.");
+    renderBriefArchive(sampleBriefArchive);
+    setBriefArchiveNote("Pipeline offline. Showing local brief samples.");
   }
 };
 
@@ -1336,143 +1529,6 @@ const formatDelta = (value, suffix = "") => {
     return { label: `+${value}${suffix}`, className: "trend-delta" };
   }
   return { label: `${value}${suffix}`, className: "trend-delta down" };
-};
-
-const escapeHtml = (value) =>
-  String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-
-const buildBriefMetrics = (metrics = {}) => {
-  const entries = [
-    { label: "Total", value: metrics.total },
-    { label: "Active", value: metrics.active },
-    { label: "Stalled", value: metrics.stalled },
-    { label: "Review backlog", value: metrics.backlog ?? metrics.inReview },
-    { label: "Interview", value: metrics.inInterview },
-    { label: "Final", value: metrics.inFinal },
-    { label: "Awarded", value: metrics.awarded },
-    { label: "SLA warnings", value: metrics.slaWarnings },
-    { label: "SLA breaches", value: metrics.slaBreaches }
-  ];
-
-  return entries.filter((entry) => entry.value !== undefined && entry.value !== null);
-};
-
-const renderBriefArchive = ({ briefs = [], note = "" } = {}) => {
-  if (!briefArchive) {
-    return;
-  }
-
-  if (briefArchiveNote) {
-    briefArchiveNote.textContent = note || "";
-  }
-
-  if (!Array.isArray(briefs) || briefs.length === 0) {
-    briefArchive.innerHTML =
-      "<p class=\"brief-empty\">No brief drafts saved yet. Generate a brief to start the archive.</p>";
-    return;
-  }
-
-  briefArchive.innerHTML = briefs
-    .map((brief) => {
-      const metrics = buildBriefMetrics(brief.metrics || {});
-      const generatedAt = formatDateTime(brief.created_at || brief.generated_at);
-      const summary = escapeHtml(brief.summary || "Summary unavailable.");
-      const cohort = escapeHtml(brief.cohort || "Unknown cohort");
-      const metricMarkup = metrics.length
-        ? metrics
-            .map(
-              (metric) => `
-              <div class="brief-metric">
-                <span>${escapeHtml(metric.label)}</span>
-                <strong>${escapeHtml(metric.value)}</strong>
-              </div>
-            `
-            )
-            .join("")
-        : "<div class=\"brief-empty\">No metrics recorded for this brief.</div>";
-
-      return `
-        <div class="brief-card" data-summary="${summary}">
-          <div class="brief-meta">
-            <span>${cohort}</span>
-            <span>${generatedAt}</span>
-          </div>
-          <strong>Weekly funnel brief</strong>
-          <p>${summary}</p>
-          <div class="brief-metrics">${metricMarkup}</div>
-          <button class="brief-action" data-copy-summary="true">Copy summary</button>
-        </div>
-      `;
-    })
-    .join("");
-};
-
-const loadBriefArchive = async () => {
-  if (!briefArchive) {
-    return;
-  }
-
-  if (briefArchiveNote) {
-    briefArchiveNote.textContent = "Loading brief archive...";
-  }
-
-  try {
-    const response = await fetch("/api/briefs", { method: "GET" });
-    if (!response.ok) {
-      throw new Error("Brief archive fetch failed");
-    }
-    const result = await response.json();
-    renderBriefArchive({
-      briefs: result?.briefs || [],
-      note: result?.briefs?.length ? "Latest saved briefs from the pipeline." : "No briefs saved yet."
-    });
-  } catch (error) {
-    renderBriefArchive({
-      briefs: sampleBriefArchive,
-      note: "Pipeline offline. Showing local brief samples."
-    });
-  }
-};
-
-const handleBriefArchiveClick = (event) => {
-  const target = event.target;
-  if (!(target instanceof HTMLElement)) {
-    return;
-  }
-
-  if (!target.matches("[data-copy-summary=\"true\"]")) {
-    return;
-  }
-
-  const card = target.closest(".brief-card");
-  if (!card) {
-    return;
-  }
-
-  const summary = card.dataset.summary;
-  if (!summary) {
-    return;
-  }
-
-  navigator.clipboard?.writeText(summary).then(
-    () => {
-      target.textContent = "Copied";
-      setTimeout(() => {
-        target.textContent = "Copy summary";
-      }, 1500);
-    },
-    () => {
-      target.textContent = "Copy failed";
-      setTimeout(() => {
-        target.textContent = "Copy summary";
-      }, 1500);
-    }
-  );
 };
 
 const setCaptureState = (isLoading) => {
@@ -1730,6 +1786,7 @@ const render = () => {
   renderStageTargets(items);
   renderDecisionQueue(items);
   renderReviewerRisk(items);
+  renderCohortComparison();
   renderSnapshot(items);
   renderRoster(items);
 };
@@ -1767,11 +1824,39 @@ if (refreshBriefArchive) {
 
 if (briefArchive) {
   briefArchive.addEventListener("click", (event) => {
-    const target = event.target.closest("[data-brief-id]");
-    if (!target) {
+    if (!(event.target instanceof HTMLElement)) {
       return;
     }
-    const brief = briefArchiveMap.get(target.dataset.briefId);
+    const openTarget = event.target.closest("[data-brief-id]");
+    const copyTarget = event.target.closest("[data-brief-copy]");
+
+    if (copyTarget) {
+      const brief = briefArchiveMap.get(copyTarget.dataset.briefCopy);
+      if (!brief || !brief.summary) {
+        return;
+      }
+      navigator.clipboard?.writeText(brief.summary).then(
+        () => {
+          copyTarget.textContent = "Copied";
+          setTimeout(() => {
+            copyTarget.textContent = "Copy summary";
+          }, 1500);
+        },
+        () => {
+          copyTarget.textContent = "Copy failed";
+          setTimeout(() => {
+            copyTarget.textContent = "Copy summary";
+          }, 1500);
+        }
+      );
+      return;
+    }
+
+    if (!openTarget) {
+      return;
+    }
+
+    const brief = briefArchiveMap.get(openTarget.dataset.briefId);
     if (!brief) {
       return;
     }
