@@ -65,3 +65,8 @@
 ## Iteration 103
 - Upgraded the brief archive with richer metrics, copy-to-clipboard actions, and a pipeline-offline fallback to local samples.
 - Improved archive rendering safety with HTML escaping and summary previews.
+
+## Iteration 47
+- Added an award forecast panel with projected award timing, SLA-based metrics, and near-term ETAs.
+- Highlighted overdue and soon-due award candidates with severity cues and action guidance.
+- Attempted a production deploy; Vercel daily deployment limit blocked release (retry later).

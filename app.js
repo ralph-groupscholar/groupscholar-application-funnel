@@ -214,6 +214,8 @@ const cadenceList = document.getElementById("cadenceList");
 const stageMomentum = document.getElementById("stageMomentum");
 const stageTargets = document.getElementById("stageTargets");
 const decisionQueue = document.getElementById("decisionQueue");
+const awardForecastMetrics = document.getElementById("awardForecastMetrics");
+const awardForecastList = document.getElementById("awardForecastList");
 const prioritySummary = document.getElementById("prioritySummary");
 const priorityList = document.getElementById("priorityList");
 const reviewerRiskMetrics = document.getElementById("reviewerRiskMetrics");
@@ -653,6 +655,12 @@ const addDays = (dateString, days) => {
   return date;
 };
 
+const addDaysFromDate = (baseDate, days) => {
+  const date = new Date(baseDate);
+  date.setDate(date.getDate() + days);
+  return date;
+};
+
 const formatDate = (date) => date.toISOString().slice(0, 10);
 
 const renderSlaWatch = (items) => {
@@ -888,6 +896,134 @@ const renderDecisionQueue = (items) => {
           <div>
             <strong>${item.days} days idle</strong>
             <span>${item.action} • ${item.reviewer}</span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+};
+
+const estimateAwardRemainingDays = (item) => {
+  if (item.stage === "Awarded") {
+    return 0;
+  }
+  const stageIndex = stages.indexOf(item.stage);
+  if (stageIndex === -1) {
+    return SLA_TARGET_DAYS;
+  }
+
+  const idleDays = daysSince(item.lastUpdate);
+  const currentTarget = slaTargets[item.stage] ?? SLA_TARGET_DAYS;
+  let remaining = Math.max(0, currentTarget - idleDays);
+
+  for (let i = stageIndex + 1; i < stages.length; i += 1) {
+    const stage = stages[i];
+    if (stage === "Awarded") {
+      break;
+    }
+    remaining += slaTargets[stage] ?? SLA_TARGET_DAYS;
+  }
+
+  return remaining;
+};
+
+const renderAwardForecast = (items) => {
+  if (!awardForecastMetrics || !awardForecastList) {
+    return;
+  }
+
+  const activeItems = items.filter((item) => item.status !== "completed");
+  if (!activeItems.length) {
+    awardForecastMetrics.innerHTML = `
+      <div class="forecast-card">
+        <span>Projected awards (14d)</span>
+        <strong>0</strong>
+        <div>No active files</div>
+      </div>
+      <div class="forecast-card">
+        <span>Projected awards (30d)</span>
+        <strong>0</strong>
+        <div>No active files</div>
+      </div>
+      <div class="forecast-card">
+        <span>Overdue awards</span>
+        <strong>0</strong>
+        <div>Within SLA</div>
+      </div>
+      <div class="forecast-card">
+        <span>Beyond 30 days</span>
+        <strong>0</strong>
+        <div>No long-range risk</div>
+      </div>
+    `;
+    awardForecastList.innerHTML = "<p>No active awards in flight.</p>";
+    return;
+  }
+
+  const forecasts = activeItems.map((item) => {
+    const remainingDays = estimateAwardRemainingDays(item);
+    const projectedDate = addDaysFromDate(today, remainingDays);
+    const severity = remainingDays <= 0 ? "critical" : remainingDays <= 7 ? "warning" : "";
+    const action = stageActionMap[item.stage] || "Advance file";
+
+    return {
+      ...item,
+      remainingDays,
+      projectedDate,
+      severity,
+      action
+    };
+  });
+
+  const due14 = forecasts.filter((item) => item.remainingDays <= 14).length;
+  const due30 = forecasts.filter((item) => item.remainingDays <= 30).length;
+  const overdue = forecasts.filter((item) => item.remainingDays <= 0).length;
+  const beyond30 = forecasts.filter((item) => item.remainingDays > 30).length;
+  const avgRemaining =
+    forecasts.reduce((sum, item) => sum + item.remainingDays, 0) / forecasts.length;
+
+  awardForecastMetrics.innerHTML = `
+    <div class="forecast-card">
+      <span>Projected awards (14d)</span>
+      <strong>${due14}</strong>
+      <div>Near-term closes</div>
+    </div>
+    <div class="forecast-card">
+      <span>Projected awards (30d)</span>
+      <strong>${due30}</strong>
+      <div>Month outlook</div>
+    </div>
+    <div class="forecast-card ${overdue ? "critical" : ""}">
+      <span>Overdue awards</span>
+      <strong>${overdue}</strong>
+      <div>Past SLA target</div>
+    </div>
+    <div class="forecast-card">
+      <span>Avg days to award</span>
+      <strong>${avgRemaining.toFixed(1)} days</strong>
+      <div>${beyond30} beyond 30 days</div>
+    </div>
+  `;
+
+  const top = forecasts
+    .sort((a, b) => a.remainingDays - b.remainingDays)
+    .slice(0, 6);
+
+  awardForecastList.innerHTML = top
+    .map((item) => {
+      const dueLabel =
+        item.remainingDays <= 0
+          ? "Overdue now"
+          : `${item.remainingDays} days to award`;
+      return `
+        <div class="forecast-item ${item.severity}">
+          <div>
+            <strong>${item.name}</strong>
+            <span>${item.id} • ${item.stage}</span>
+          </div>
+          <div>
+            <strong>${dueLabel}</strong>
+            <span>${item.action} • ETA ${formatDate(item.projectedDate)}</span>
           </div>
         </div>
       `;
@@ -1785,6 +1921,7 @@ const render = () => {
   renderStageMomentum(items);
   renderStageTargets(items);
   renderDecisionQueue(items);
+  renderAwardForecast(items);
   renderReviewerRisk(items);
   renderCohortComparison();
   renderSnapshot(items);
