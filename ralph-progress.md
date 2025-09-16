@@ -70,3 +70,21 @@
 - Added an award forecast panel with projected award timing, SLA-based metrics, and near-term ETAs.
 - Highlighted overdue and soon-due award candidates with severity cues and action guidance.
 - Attempted a production deploy; Vercel daily deployment limit blocked release (retry later).
+
+## Iteration 140
+- Added a stage movement log panel with transition metrics and severity cues for recent pipeline moves.
+- Built a Postgres-backed stage movement API endpoint with schema bootstrap and seed data.
+- Wired the dashboard to refresh stage movement data alongside live sync and snapshot history.
+
+## Iteration 148
+- Added a drop-off recovery panel with leak metrics, win-back targets, and action guidance by stage.
+- Wired the dashboard to calculate leakage severity and highlight the biggest conversion loss.
+
+## Iteration 149
+- Added an experience health panel that scores scholar-facing responsiveness and flags high-risk files.
+- Built scoring logic for cadence adherence, SLA drift, and stalled status with action guidance.
+
+## Iteration 142
+- Added an interview scheduling pulse panel with holds, invites, upcoming interviews, and wait-time metrics.
+- Built a Postgres-backed interview scheduling API endpoint with schema bootstrap and seed data.
+- Wired the live refresh pipeline to load interview scheduling data with offline fallbacks.

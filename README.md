@@ -5,9 +5,11 @@ A local-first operational dashboard to track application flow, reviewer capacity
 ## Features
 - Cohort, status, reviewer, and search filters
 - Stage-by-stage funnel conversion with drop-off visibility
+- Drop-off recovery panel with leakage targets and action guidance
 - Reviewer capacity and turnaround time tracking
 - Operational alerting for stalled files and review backlog
 - SLA watchlist for overdue application follow-ups
+- Interview scheduling pulse for panel holds, invites, and upcoming interviews
 - Live snapshot panel backed by a Postgres data store (with safe fallback data)
 - Weekly brief generator that persists drafts to the pipeline plus JSON export
 

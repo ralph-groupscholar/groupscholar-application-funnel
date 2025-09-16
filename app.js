@@ -16,6 +16,14 @@ const slaTargets = {
   Awarded: 0
 };
 
+const leakageActions = {
+  Eligibility: "Request missing documents and eligibility proof",
+  Review: "Add reviewer coverage and accelerate scoring",
+  Interview: "Confirm interview scheduling with candidates",
+  Final: "Clear final checks and documentation",
+  Awarded: "Send award notices and capture acceptances"
+};
+
 const sampleData = [
   {
     id: "GS-2041",
@@ -195,6 +203,219 @@ const sampleBriefArchive = [
   }
 ];
 
+const sampleStageMovement = [
+  {
+    id: "GS-2042",
+    name: "Jalen Ortiz",
+    cohort: "Spring 2026",
+    fromStage: "Review",
+    toStage: "Interview",
+    reviewer: "L. Webb",
+    movedAt: "2026-02-07T13:30:00Z",
+    daysInStage: 9,
+    reason: "Strong rubric scores; schedule panel."
+  },
+  {
+    id: "GS-2041",
+    name: "Ari Lennox",
+    cohort: "Spring 2026",
+    fromStage: "Eligibility",
+    toStage: "Review",
+    reviewer: "M. Rivera",
+    movedAt: "2026-02-06T16:10:00Z",
+    daysInStage: 5,
+    reason: "Eligibility docs cleared."
+  },
+  {
+    id: "GS-2044",
+    name: "Noah Kim",
+    cohort: "Spring 2026",
+    fromStage: "Interview",
+    toStage: "Final",
+    reviewer: "A. Chen",
+    movedAt: "2026-02-05T18:45:00Z",
+    daysInStage: 7,
+    reason: "Panel notes complete."
+  },
+  {
+    id: "GS-1968",
+    name: "Fatima Noor",
+    cohort: "Winter 2025",
+    fromStage: "Review",
+    toStage: "Interview",
+    reviewer: "S. Tran",
+    movedAt: "2026-02-03T14:05:00Z",
+    daysInStage: 15,
+    reason: "Escalated after delay."
+  },
+  {
+    id: "GS-2050",
+    name: "Isla Bennett",
+    cohort: "Spring 2026",
+    fromStage: "Submitted",
+    toStage: "Eligibility",
+    reviewer: "L. Webb",
+    movedAt: "2026-02-02T12:20:00Z",
+    daysInStage: 3,
+    reason: "Intake verification complete."
+  },
+  {
+    id: "GS-1967",
+    name: "Mateo Ruiz",
+    cohort: "Winter 2025",
+    fromStage: "Final",
+    toStage: "Awarded",
+    reviewer: "S. Tran",
+    movedAt: "2026-02-01T09:30:00Z",
+    daysInStage: 8,
+    reason: "Award approval issued."
+  }
+];
+
+const sampleDecisionLatency = [
+  {
+    id: "GS-2042",
+    name: "Jalen Ortiz",
+    cohort: "Spring 2026",
+    stage: "Interview",
+    reviewer: "L. Webb",
+    requestedAt: "2026-02-03T16:00:00Z",
+    decisionBy: "2026-02-10T16:00:00Z",
+    decidedAt: null,
+    status: "pending",
+    daysInQueue: 5,
+    notes: "Panel notes awaiting sign-off."
+  },
+  {
+    id: "GS-2044",
+    name: "Noah Kim",
+    cohort: "Spring 2026",
+    stage: "Final",
+    reviewer: "A. Chen",
+    requestedAt: "2026-02-01T18:00:00Z",
+    decisionBy: "2026-02-08T18:00:00Z",
+    decidedAt: null,
+    status: "pending",
+    daysInQueue: 7,
+    notes: "Budget confirmation required."
+  },
+  {
+    id: "GS-2041",
+    name: "Ari Lennox",
+    cohort: "Spring 2026",
+    stage: "Interview",
+    reviewer: "M. Rivera",
+    requestedAt: "2026-01-30T14:30:00Z",
+    decisionBy: "2026-02-06T14:30:00Z",
+    decidedAt: "2026-02-05T13:15:00Z",
+    status: "completed",
+    daysInQueue: 6,
+    notes: "Decision finalized after panel review."
+  },
+  {
+    id: "GS-1968",
+    name: "Fatima Noor",
+    cohort: "Winter 2025",
+    stage: "Final",
+    reviewer: "S. Tran",
+    requestedAt: "2026-01-24T11:45:00Z",
+    decisionBy: "2026-02-01T11:45:00Z",
+    decidedAt: null,
+    status: "overdue",
+    daysInQueue: 12,
+    notes: "Needs final award approval."
+  },
+  {
+    id: "GS-2050",
+    name: "Isla Bennett",
+    cohort: "Spring 2026",
+    stage: "Interview",
+    reviewer: "L. Webb",
+    requestedAt: "2026-02-04T09:00:00Z",
+    decisionBy: "2026-02-11T09:00:00Z",
+    decidedAt: null,
+    status: "pending",
+    daysInQueue: 4,
+    notes: "Waiting on supplemental reference."
+  },
+  {
+    id: "GS-1967",
+    name: "Mateo Ruiz",
+    cohort: "Winter 2025",
+    stage: "Final",
+    reviewer: "S. Tran",
+    requestedAt: "2026-01-20T15:00:00Z",
+    decisionBy: "2026-01-27T15:00:00Z",
+    decidedAt: "2026-01-26T10:20:00Z",
+    status: "completed",
+    daysInQueue: 6,
+    notes: "Award approved and issued."
+  }
+];
+
+const sampleInterviewScheduling = [
+  {
+    id: "GS-2042",
+    name: "Jalen Ortiz",
+    cohort: "Spring 2026",
+    reviewer: "L. Webb",
+    panelLead: "C. Liao",
+    scheduledAt: "2026-02-12T16:00:00Z",
+    inviteSentAt: "2026-02-08T10:00:00Z",
+    status: "scheduled",
+    daysWaiting: 4,
+    notes: "Panel confirmed, interpreter requested."
+  },
+  {
+    id: "GS-2050",
+    name: "Isla Bennett",
+    cohort: "Spring 2026",
+    reviewer: "L. Webb",
+    panelLead: "C. Liao",
+    scheduledAt: null,
+    inviteSentAt: "2026-02-06T15:30:00Z",
+    status: "invited",
+    daysWaiting: 5,
+    notes: "Waiting on candidate confirmation."
+  },
+  {
+    id: "GS-2041",
+    name: "Ari Lennox",
+    cohort: "Spring 2026",
+    reviewer: "M. Rivera",
+    panelLead: "T. Monroe",
+    scheduledAt: null,
+    inviteSentAt: null,
+    status: "hold",
+    daysWaiting: 8,
+    notes: "Needs availability from panelists."
+  },
+  {
+    id: "GS-1969",
+    name: "Chloe Martin",
+    cohort: "Winter 2025",
+    reviewer: "R. Flores",
+    panelLead: "J. Patel",
+    scheduledAt: "2026-02-09T18:00:00Z",
+    inviteSentAt: "2026-02-04T09:30:00Z",
+    status: "scheduled",
+    daysWaiting: 2,
+    notes: "Send prep packet."
+  },
+  {
+    id: "GS-1968",
+    name: "Fatima Noor",
+    cohort: "Winter 2025",
+    reviewer: "S. Tran",
+    panelLead: "J. Patel",
+    scheduledAt: null,
+    inviteSentAt: "2026-02-02T14:00:00Z",
+    status: "invited",
+    daysWaiting: 9,
+    notes: "Needs time-zone coordination."
+  }
+];
+
 let data = [...sampleData];
 
 const cohortSelect = document.getElementById("cohortSelect");
@@ -205,6 +426,8 @@ const exportJson = document.getElementById("exportJson");
 const generateBrief = document.getElementById("generateBrief");
 
 const funnelStages = document.getElementById("funnelStages");
+const leakageMetrics = document.getElementById("leakageMetrics");
+const leakageList = document.getElementById("leakageList");
 const reviewerTable = document.getElementById("reviewerTable");
 const alertList = document.getElementById("alertList");
 const slaList = document.getElementById("slaList");
@@ -227,6 +450,15 @@ const cohortComparisonNote = document.getElementById("cohortComparisonNote");
 const cohortSnapshot = document.getElementById("cohortSnapshot");
 const capacityForecast = document.getElementById("capacityForecast");
 const rebalanceList = document.getElementById("rebalanceList");
+const stageTimelineMetrics = document.getElementById("stageTimelineMetrics");
+const stageTimeline = document.getElementById("stageTimeline");
+const stageTimelineNote = document.getElementById("stageTimelineNote");
+const decisionLatencyMetrics = document.getElementById("decisionLatencyMetrics");
+const decisionLatencyList = document.getElementById("decisionLatencyList");
+const decisionLatencyNote = document.getElementById("decisionLatencyNote");
+const interviewSchedulingMetrics = document.getElementById("interviewSchedulingMetrics");
+const interviewSchedulingList = document.getElementById("interviewSchedulingList");
+const interviewSchedulingNote = document.getElementById("interviewSchedulingNote");
 const liveSnapshot = document.getElementById("liveSnapshot");
 const liveSnapshotNotes = document.getElementById("liveSnapshotNotes");
 const snapshotTrend = document.getElementById("snapshotTrend");
@@ -237,6 +469,8 @@ const briefArchiveNote = document.getElementById("briefArchiveNote");
 const refreshBriefArchive = document.getElementById("refreshBriefArchive");
 const outreachMetrics = document.getElementById("outreachMetrics");
 const outreachList = document.getElementById("outreachList");
+const experienceMetrics = document.getElementById("experienceMetrics");
+const experienceList = document.getElementById("experienceList");
 const briefPanel = document.getElementById("briefPanel");
 const briefOutput = document.getElementById("briefOutput");
 const briefStatus = document.getElementById("briefStatus");
@@ -356,6 +590,89 @@ const renderFunnel = (items) => {
 
   totalApplications.textContent = items.length;
   overallConversion.textContent = `${((counts[counts.length - 1] / submitted) * 100).toFixed(1)}%`;
+};
+
+const renderLeakageRecovery = (items) => {
+  if (!leakageMetrics || !leakageList) return;
+
+  if (!items.length) {
+    leakageMetrics.innerHTML = "<p>No funnel data available.</p>";
+    leakageList.innerHTML = "";
+    return;
+  }
+
+  const counts = stages.map((stage) => items.filter((item) => item.stage === stage).length);
+  const transitions = stages.slice(1).map((stage, index) => {
+    const previous = counts[index];
+    const current = counts[index + 1];
+    const drop = Math.max(previous - current, 0);
+    const dropRate = previous ? drop / previous : 0;
+    const severity = dropRate >= 0.35 || drop >= 4 ? "critical" : dropRate >= 0.2 || drop >= 2 ? "warning" : "";
+    const action = leakageActions[stage] || "Monitor stage handoffs and resolve blockers";
+
+    return {
+      stage,
+      previous,
+      current,
+      drop,
+      dropRate,
+      severity,
+      action
+    };
+  });
+
+  const totalDrop = transitions.reduce((sum, item) => sum + item.drop, 0);
+  const avgDropRate = transitions.length
+    ? transitions.reduce((sum, item) => sum + item.dropRate, 0) / transitions.length
+    : 0;
+  const topLeak = transitions
+    .slice()
+    .sort((a, b) => (b.dropRate - a.dropRate) || (b.drop - a.drop))[0];
+  const recoveryTarget = topLeak ? Math.max(1, Math.round(topLeak.drop * 0.35)) : 0;
+
+  leakageMetrics.innerHTML = `
+    <div class="forecast-card">
+      <span>Total drop-offs</span>
+      <strong>${totalDrop}</strong>
+      <div>Across all stages</div>
+    </div>
+    <div class="forecast-card ${topLeak ? topLeak.severity : ""}">
+      <span>Biggest leak</span>
+      <strong>${topLeak ? topLeak.stage : "None"}</strong>
+      <div>${topLeak ? `${(topLeak.dropRate * 100).toFixed(0)}% loss` : "No stage loss"}</div>
+    </div>
+    <div class="forecast-card">
+      <span>Avg drop rate</span>
+      <strong>${(avgDropRate * 100).toFixed(1)}%</strong>
+      <div>Per stage transition</div>
+    </div>
+    <div class="forecast-card">
+      <span>Recovery target</span>
+      <strong>${recoveryTarget}</strong>
+      <div>${topLeak ? "Files to win back" : "No target set"}</div>
+    </div>
+  `;
+
+  leakageList.innerHTML = transitions.length
+    ? transitions
+        .sort((a, b) => (b.dropRate - a.dropRate) || (b.drop - a.drop))
+        .slice(0, 4)
+        .map(
+          (item) => `
+      <div class="forecast-item ${item.severity}">
+        <div>
+          <strong>${item.stage}</strong>
+          <span>${item.drop} drop-offs • ${(item.dropRate * 100).toFixed(0)}% loss</span>
+        </div>
+        <div>
+          <strong>${item.action}</strong>
+          <span>${item.current} currently in stage</span>
+        </div>
+      </div>
+    `
+        )
+        .join("")
+    : "<p>No leakage detected.</p>";
 };
 
 const renderReviewers = (items) => {
@@ -649,6 +966,22 @@ const daysSince = (dateString) => {
   return Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)));
 };
 
+const daysSinceTimestamp = (value) => {
+  if (!value) return 0;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 0;
+  const diff = today - date;
+  return Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)));
+};
+
+const daysUntilTimestamp = (value) => {
+  if (!value) return 0;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 0;
+  const diff = date - today;
+  return Math.round(diff / (1000 * 60 * 60 * 24));
+};
+
 const addDays = (dateString, days) => {
   const date = new Date(`${dateString}T00:00:00`);
   date.setDate(date.getDate() + days);
@@ -866,6 +1199,305 @@ const renderStageTargets = (items) => {
   });
 
   stageTargets.innerHTML = rows.join("");
+};
+
+const renderStageTimeline = (payload) => {
+  if (!stageTimeline || !stageTimelineMetrics) {
+    return;
+  }
+
+  const events = Array.isArray(payload?.events) && payload.events.length
+    ? payload.events.slice()
+    : sampleStageMovement.slice();
+
+  events.sort((a, b) => new Date(b.movedAt) - new Date(a.movedAt));
+
+  const avgStageTime = events.length
+    ? (events.reduce((sum, event) => sum + Number(event.daysInStage || 0), 0) / events.length).toFixed(1)
+    : "0.0";
+  const latestMove = events[0];
+  const latestMoveLabel = latestMove
+    ? `${daysSinceTimestamp(latestMove.movedAt)} days ago`
+    : "No moves yet";
+  const escalations = events.filter((event) => {
+    const target = slaTargets[event.fromStage] ?? SLA_TARGET_DAYS;
+    return Number(event.daysInStage || 0) >= Math.max(SLA_WARNING_DAYS, target + 2);
+  }).length;
+  const slowest = events.reduce(
+    (max, event) => (Number(event.daysInStage || 0) > Number(max.daysInStage || 0) ? event : max),
+    { daysInStage: 0 }
+  );
+
+  stageTimelineMetrics.innerHTML = `
+    <div class="timeline-metric">
+      <span>Recent moves</span>
+      <strong>${events.length}</strong>
+      <div>Last 14 days</div>
+    </div>
+    <div class="timeline-metric">
+      <span>Latest transition</span>
+      <strong>${latestMoveLabel}</strong>
+      <div>${latestMove ? `${latestMove.name} → ${latestMove.toStage}` : "Awaiting next update"}</div>
+    </div>
+    <div class="timeline-metric">
+      <span>Avg stage time</span>
+      <strong>${avgStageTime} days</strong>
+      <div>Across recent moves</div>
+    </div>
+    <div class="timeline-metric">
+      <span>Escalations</span>
+      <strong>${escalations}</strong>
+      <div>${slowest.name ? `${slowest.name} lingered ${slowest.daysInStage} days` : "No escalations"}</div>
+    </div>
+  `;
+
+  if (!events.length) {
+    stageTimeline.innerHTML = "<p>No recent stage transitions logged.</p>";
+  } else {
+    stageTimeline.innerHTML = events.slice(0, 6).map((event) => {
+      const target = slaTargets[event.fromStage] ?? SLA_TARGET_DAYS;
+      const daysInStage = Number(event.daysInStage || 0);
+      let severity = "";
+      let pillClass = "timeline-pill";
+      if (daysInStage >= Math.max(SLA_CRITICAL_DAYS, target + 4)) {
+        severity = "critical";
+        pillClass += " critical";
+      } else if (daysInStage >= Math.max(SLA_WARNING_DAYS, target + 2)) {
+        severity = "warning";
+        pillClass += " warning";
+      }
+      const pillLabel = severity ? severity.toUpperCase() : "ON TRACK";
+
+      return `
+        <div class="timeline-card ${severity}">
+          <div class="timeline-header">
+            <div>
+              <strong>${event.name}</strong>
+              <span>${event.id} • ${event.cohort}</span>
+            </div>
+            <span class="${pillClass}">${pillLabel}</span>
+          </div>
+          <div class="timeline-meta">
+            <span>${event.fromStage} → ${event.toStage}</span>
+            <span>${daysInStage} days in stage</span>
+            <span>${event.reviewer}</span>
+          </div>
+          <div class="timeline-meta">
+            <span>${formatDateTime(event.movedAt)}</span>
+            <span>${event.reason || "No transition note provided."}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  if (stageTimelineNote) {
+    stageTimelineNote.textContent =
+      payload?.note || (payload?.source ? `Source: ${payload.source}.` : "");
+  }
+};
+
+const renderDecisionLatencyPulse = (payload) => {
+  if (!decisionLatencyMetrics || !decisionLatencyList) {
+    return;
+  }
+
+  const records = Array.isArray(payload?.records) && payload.records.length
+    ? payload.records.slice()
+    : sampleDecisionLatency.slice();
+
+  records.sort((a, b) => new Date(a.decisionBy) - new Date(b.decisionBy));
+
+  const pending = records.filter((record) => record.status !== "completed");
+  const completed = records.filter((record) => record.status === "completed");
+  const avgQueue = records.length
+    ? (records.reduce((sum, record) => sum + Number(record.daysInQueue || 0), 0) / records.length).toFixed(1)
+    : "0.0";
+  const overdueCount = pending.filter((record) => daysUntilTimestamp(record.decisionBy) < 0).length;
+  const dueSoon = pending.filter((record) => {
+    const daysLeft = daysUntilTimestamp(record.decisionBy);
+    return daysLeft >= 0 && daysLeft <= 2;
+  }).length;
+  const completionRate = records.length ? Math.round((completed.length / records.length) * 100) : 0;
+
+  decisionLatencyMetrics.innerHTML = `
+    <div class="latency-metric">
+      <span>Pending decisions</span>
+      <strong>${pending.length}</strong>
+      <div>${dueSoon} due in 48h</div>
+    </div>
+    <div class="latency-metric">
+      <span>Overdue</span>
+      <strong>${overdueCount}</strong>
+      <div>${overdueCount ? "Escalate to leadership" : "No overdue decisions"}</div>
+    </div>
+    <div class="latency-metric">
+      <span>Avg queue time</span>
+      <strong>${avgQueue} days</strong>
+      <div>Across interview + final</div>
+    </div>
+    <div class="latency-metric">
+      <span>Completion rate</span>
+      <strong>${completionRate}%</strong>
+      <div>${completed.length} closed decisions</div>
+    </div>
+  `;
+
+  if (!records.length) {
+    decisionLatencyList.innerHTML = "<p>No decision latency items logged.</p>";
+  } else {
+    decisionLatencyList.innerHTML = records.slice(0, 6).map((record) => {
+      const daysLeft = daysUntilTimestamp(record.decisionBy);
+      let severity = \"\";
+      let pillClass = \"latency-pill\";
+      if (record.status === \"completed\") {
+        pillClass += \"\";
+      } else if (daysLeft < 0 || record.status === \"overdue\") {
+        severity = \"critical\";
+        pillClass += \" critical\";
+      } else if (daysLeft <= 2) {
+        severity = \"warning\";
+        pillClass += \" warning\";
+      }
+      const pillLabel =
+        record.status === \"completed\" ? \"COMPLETE\" : daysLeft < 0 ? \"OVERDUE\" : `DUE ${daysLeft}D`;
+
+      return `
+        <div class="latency-card ${severity}">
+          <div class="latency-header">
+            <div>
+              <strong>${record.name}</strong>
+              <span>${record.id} • ${record.cohort}</span>
+            </div>
+            <span class="${pillClass}">${pillLabel}</span>
+          </div>
+          <div class="latency-meta">
+            <span>${record.stage} decision</span>
+            <span>${record.reviewer}</span>
+            <span>${record.daysInQueue} days in queue</span>
+          </div>
+          <div class="latency-meta">
+            <span>Requested ${formatDateTime(record.requestedAt)}</span>
+            <span>Due ${formatDateTime(record.decisionBy)}</span>
+          </div>
+          <div class="latency-meta">
+            <span>${record.notes || \"No decision notes provided.\"}</span>
+          </div>
+        </div>
+      `;
+    }).join(\"\");
+  }
+
+  if (decisionLatencyNote) {
+    decisionLatencyNote.textContent =
+      payload?.note || (payload?.source ? `Source: ${payload.source}.` : \"\");
+  }
+};
+
+const renderInterviewScheduling = (payload) => {
+  if (!interviewSchedulingMetrics || !interviewSchedulingList) {
+    return;
+  }
+
+  const records = Array.isArray(payload?.records) && payload.records.length
+    ? payload.records.slice()
+    : sampleInterviewScheduling.slice();
+
+  records.sort((a, b) => {
+    const aTime = a.scheduledAt ? new Date(a.scheduledAt).getTime() : Infinity;
+    const bTime = b.scheduledAt ? new Date(b.scheduledAt).getTime() : Infinity;
+    return aTime - bTime;
+  });
+
+  const holds = records.filter((record) => record.status === "hold");
+  const invited = records.filter((record) => record.status === "invited");
+  const scheduled = records.filter((record) => record.status === "scheduled");
+  const upcoming = records.filter((record) => {
+    if (!record.scheduledAt) return false;
+    return daysUntilTimestamp(record.scheduledAt) >= 0 && daysUntilTimestamp(record.scheduledAt) <= 7;
+  }).length;
+  const avgWait = records.length
+    ? (records.reduce((sum, record) => sum + Number(record.daysWaiting || 0), 0) / records.length).toFixed(1)
+    : "0.0";
+
+  interviewSchedulingMetrics.innerHTML = `
+    <div class="interview-metric">
+      <span>Holds</span>
+      <strong>${holds.length}</strong>
+      <div>${holds.length ? "Need panel assignment" : "No holds"}</div>
+    </div>
+    <div class="interview-metric">
+      <span>Invites pending</span>
+      <strong>${invited.length}</strong>
+      <div>${invited.length ? "Awaiting candidate reply" : "All invites confirmed"}</div>
+    </div>
+    <div class="interview-metric">
+      <span>Upcoming (7d)</span>
+      <strong>${upcoming}</strong>
+      <div>${scheduled.length} scheduled total</div>
+    </div>
+    <div class="interview-metric">
+      <span>Avg wait</span>
+      <strong>${avgWait} days</strong>
+      <div>Invite to schedule</div>
+    </div>
+  `;
+
+  if (!records.length) {
+    interviewSchedulingList.innerHTML = "<p>No interview scheduling items yet.</p>";
+  } else {
+    interviewSchedulingList.innerHTML = records.slice(0, 6).map((record) => {
+      const daysUntil = record.scheduledAt ? daysUntilTimestamp(record.scheduledAt) : null;
+      let severity = "";
+      let pillClass = "interview-pill";
+      if (record.status === "hold" || Number(record.daysWaiting) >= SLA_WARNING_DAYS) {
+        severity = "warning";
+        pillClass += " warning";
+      }
+      if (Number(record.daysWaiting) >= SLA_CRITICAL_DAYS) {
+        severity = "critical";
+        pillClass = "interview-pill critical";
+      }
+
+      const pillLabel = record.status === "scheduled"
+        ? `IN ${daysUntil !== null ? Math.max(daysUntil, 0) : "?"}D`
+        : record.status === "invited"
+        ? "INVITED"
+        : "ON HOLD";
+
+      const scheduleLine = record.scheduledAt
+        ? `Scheduled ${formatDateTime(record.scheduledAt)}`
+        : record.inviteSentAt
+        ? `Invite sent ${formatDateTime(record.inviteSentAt)}`
+        : "Invite not sent";
+
+      return `
+        <div class="interview-card ${severity}">
+          <div class="interview-header">
+            <div>
+              <strong>${record.name}</strong>
+              <span>${record.id} • ${record.cohort}</span>
+            </div>
+            <span class="${pillClass}">${pillLabel}</span>
+          </div>
+          <div class="interview-meta">
+            <span>Panel lead: ${record.panelLead || "TBD"}</span>
+            <span>Owner: ${record.reviewer}</span>
+            <span>${record.daysWaiting} days waiting</span>
+          </div>
+          <div class="interview-meta">
+            <span>${scheduleLine}</span>
+            <span>${record.notes || "No scheduling notes."}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  if (interviewSchedulingNote) {
+    interviewSchedulingNote.textContent =
+      payload?.note || (payload?.source ? `Source: ${payload.source}.` : "");
+  }
 };
 
 const renderDecisionQueue = (items) => {
@@ -1183,6 +1815,163 @@ const renderOutreachCadence = (items) => {
         )
         .join("")
     : "<p>No outreach touchpoints due in the next week.</p>";
+};
+
+const scoreExperience = (item) => {
+  const daysIdle = daysSince(item.lastUpdate);
+  const target = slaTargets[item.stage] ?? SLA_TARGET_DAYS;
+  const overTarget = Math.max(0, daysIdle - target);
+  const cadence = outreachCadenceDays[item.stage] ?? 3;
+  let daysToDue = null;
+  if (cadence) {
+    const dueDate = addDays(item.lastUpdate, cadence);
+    daysToDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+  }
+
+  let score = 100 - overTarget * 4;
+  if (item.status === "stalled") {
+    score -= 15;
+  }
+  if (daysToDue !== null) {
+    if (daysToDue < 0) {
+      score -= 10;
+    } else if (daysToDue <= 2) {
+      score -= 5;
+    }
+  }
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  const severity =
+    score < 60 || overTarget >= 5 || item.status === "stalled"
+      ? "critical"
+      : score < 75 || overTarget >= 2 || (daysToDue !== null && daysToDue <= 2)
+      ? "warning"
+      : "";
+
+  let action = "Maintain cadence";
+  if (item.status === "stalled") {
+    action = "Escalate stalled file";
+  } else if (overTarget > 0) {
+    action = stageActionMap[item.stage] || "Advance file";
+  } else if (daysToDue !== null && daysToDue < 0) {
+    action = "Send outreach now";
+  } else if (daysToDue !== null && daysToDue <= 2) {
+    action = "Confirm next touchpoint";
+  }
+
+  let cadenceLabel = "No cadence set";
+  if (daysToDue !== null) {
+    cadenceLabel =
+      daysToDue < 0
+        ? `${Math.abs(daysToDue)} days overdue`
+        : daysToDue === 0
+        ? "Due today"
+        : `${daysToDue} days until touchpoint`;
+  }
+
+  return {
+    ...item,
+    score,
+    daysIdle,
+    overTarget,
+    daysToDue,
+    severity,
+    action,
+    cadenceLabel
+  };
+};
+
+const renderExperienceHealth = (items) => {
+  if (!experienceMetrics || !experienceList) {
+    return;
+  }
+
+  const activeItems = items.filter((item) => item.status !== "completed");
+  if (!activeItems.length) {
+    experienceMetrics.innerHTML = `
+      <div class="experience-metric">
+        <span>Experience score</span>
+        <strong>--</strong>
+        <div>No active files</div>
+      </div>
+      <div class="experience-metric">
+        <span>On-time updates</span>
+        <strong>--</strong>
+        <div>No active files</div>
+      </div>
+      <div class="experience-metric">
+        <span>Overdue touchpoints</span>
+        <strong>0</strong>
+        <div>Nothing due</div>
+      </div>
+      <div class="experience-metric">
+        <span>High risk files</span>
+        <strong>0</strong>
+        <div>All clear</div>
+      </div>
+    `;
+    experienceList.innerHTML = "<p>No active experience risks detected.</p>";
+    return;
+  }
+
+  const insights = activeItems.map(scoreExperience);
+  const avgScore =
+    insights.reduce((sum, item) => sum + item.score, 0) / insights.length;
+  const onTime = insights.filter((item) => item.overTarget === 0).length;
+  const onTimeRate = Math.round((onTime / insights.length) * 100);
+  const overdueTouchpoints = insights.filter((item) => item.daysToDue !== null && item.daysToDue < 0).length;
+  const highRisk = insights.filter((item) => item.score < 70).length;
+
+  experienceMetrics.innerHTML = `
+    <div class="experience-metric">
+      <span>Experience score</span>
+      <strong>${avgScore.toFixed(1)}</strong>
+      <div>Average across active files</div>
+    </div>
+    <div class="experience-metric">
+      <span>On-time updates</span>
+      <strong>${onTimeRate}%</strong>
+      <div>${onTime} within SLA targets</div>
+    </div>
+    <div class="experience-metric ${overdueTouchpoints ? "warning" : ""}">
+      <span>Overdue touchpoints</span>
+      <strong>${overdueTouchpoints}</strong>
+      <div>${overdueTouchpoints ? "Prioritize outreach" : "Cadence on track"}</div>
+    </div>
+    <div class="experience-metric ${highRisk ? "critical" : ""}">
+      <span>High risk files</span>
+      <strong>${highRisk}</strong>
+      <div>${highRisk ? "Needs attention" : "No critical files"}</div>
+    </div>
+  `;
+
+  const listItems = insights
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 6);
+
+  experienceList.innerHTML = listItems
+    .map(
+      (item) => `
+        <div class="experience-card ${item.severity}">
+          <div class="experience-header">
+            <div>
+              <strong>${item.name}</strong>
+              <span>${item.id} • ${item.stage}</span>
+            </div>
+            <div class="experience-score">
+              <span>Score</span>
+              <strong>${item.score}</strong>
+            </div>
+          </div>
+          <div class="experience-meta">
+            <span>${item.daysIdle} days since update</span>
+            <span>${item.cadenceLabel}</span>
+            <span>${item.action}</span>
+          </div>
+        </div>
+      `
+    )
+    .join("");
 };
 
 const cohortTermOrder = {
@@ -1801,6 +2590,69 @@ const loadSnapshotHistory = async () => {
   }
 };
 
+const loadStageMovement = async () => {
+  if (!stageTimeline) {
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/stage-movement");
+    if (!response.ok) {
+      throw new Error("Movement fetch failed");
+    }
+    const payload = await response.json();
+    renderStageTimeline(payload);
+  } catch (error) {
+    renderStageTimeline({
+      source: "fallback",
+      events: sampleStageMovement,
+      note: "Using local movement log while the pipeline is offline."
+    });
+  }
+};
+
+const loadDecisionLatency = async () => {
+  if (!decisionLatencyList) {
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/decision-latency");
+    if (!response.ok) {
+      throw new Error("Latency fetch failed");
+    }
+    const payload = await response.json();
+    renderDecisionLatencyPulse(payload);
+  } catch (error) {
+    renderDecisionLatencyPulse({
+      source: "fallback",
+      records: sampleDecisionLatency,
+      note: "Using local decision latency data while the pipeline is offline."
+    });
+  }
+};
+
+const loadInterviewScheduling = async () => {
+  if (!interviewSchedulingList) {
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/interview-scheduling");
+    if (!response.ok) {
+      throw new Error("Interview scheduling fetch failed");
+    }
+    const payload = await response.json();
+    renderInterviewScheduling(payload);
+  } catch (error) {
+    renderInterviewScheduling({
+      source: "fallback",
+      records: sampleInterviewScheduling,
+      note: "Using local interview scheduling data while the pipeline is offline."
+    });
+  }
+};
+
 const renderLiveSnapshot = (payload) => {
   if (!liveSnapshot || !payload) {
     return;
@@ -1850,7 +2702,13 @@ const renderLiveSnapshot = (payload) => {
 const refreshLiveSnapshot = async () => {
   setLiveRefreshState(true);
   try {
-    await Promise.all([loadRemoteData(), loadSnapshotHistory()]);
+    await Promise.all([
+      loadRemoteData(),
+      loadSnapshotHistory(),
+      loadStageMovement(),
+      loadDecisionLatency(),
+      loadInterviewScheduling()
+    ]);
   } finally {
     setLiveRefreshState(false);
   }
@@ -1911,12 +2769,14 @@ const render = () => {
   const items = filterData();
   activeCohort.textContent = cohortSelect.value;
   renderFunnel(items);
+  renderLeakageRecovery(items);
   renderReviewers(items);
   renderCapacity(items);
   renderAlerts(items);
   renderSlaMetrics(items);
   renderSlaWatch(items);
   renderOutreachCadence(items);
+  renderExperienceHealth(items);
   renderPriorityQueue(items);
   renderStageMomentum(items);
   renderStageTargets(items);
